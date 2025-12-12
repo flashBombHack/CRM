@@ -1,0 +1,7 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Environment files
+.env.example text eol=lf
+.env*.local text eol=lf
+
