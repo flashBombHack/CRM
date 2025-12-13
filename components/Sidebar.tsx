@@ -242,20 +242,42 @@ export default function Sidebar() {
           <div className="p-4 border-t border-primary-600 space-y-1">
             {bottomNavItems.map((item) => {
               const active = item.href ? isActive(item.href) : false;
-              const Component = item.href ? Link : "button";
-              const props = item.href 
-                ? { href: item.href }
-                : { onClick: item.onClick, type: "button" as const };
+              const className = `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${
+                active
+                  ? "bg-white"
+                  : "text-white hover:bg-white/10"
+              } ${isCollapsed ? "justify-center" : ""}`;
+
+              if (item.href) {
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={className}
+                  >
+                    <span className="flex-shrink-0">
+                      <SvgIcon
+                        src={item.iconSrc}
+                        color={active ? "#0072CE" : "white"}
+                        width={18}
+                        height={18}
+                      />
+                    </span>
+                    {!isCollapsed && (
+                      <span className={`text-sm font-medium ${active ? "text-primary" : "text-white"}`}>
+                        {item.name}
+                      </span>
+                    )}
+                  </Link>
+                );
+              }
 
               return (
-                <Component
+                <button
                   key={item.name}
-                  {...props}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${
-                    active
-                      ? "bg-white"
-                      : "text-white hover:bg-white/10"
-                  } ${isCollapsed ? "justify-center" : ""}`}
+                  onClick={item.onClick}
+                  type="button"
+                  className={className}
                 >
                   <span className="flex-shrink-0">
                     <SvgIcon
@@ -270,7 +292,7 @@ export default function Sidebar() {
                       {item.name}
                     </span>
                   )}
-                </Component>
+                </button>
               );
             })}
           </div>
