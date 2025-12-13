@@ -1,17 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import SplashScreen from "@/components/SplashScreen";
 import Header from "@/components/Header";
 import Link from "next/link";
 
+const SPLASH_SCREEN_SEEN_KEY = "splash_screen_seen";
+
 export default function Home() {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashComplete, setSplashComplete] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Check if splash screen has been shown in this session
+    if (typeof window !== "undefined") {
+      const hasSeenSplash = sessionStorage.getItem(SPLASH_SCREEN_SEEN_KEY);
+      if (!hasSeenSplash) {
+        // First visit in this session - show splash screen
+        setShowSplash(true);
+        // Mark as seen for this session
+        sessionStorage.setItem(SPLASH_SCREEN_SEEN_KEY, "true");
+      } else {
+        // Already seen in this session - skip splash and show hero animations immediately
+        setSplashComplete(true);
+      }
+      setIsChecking(false);
+    }
+  }, []);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    // Delay hero animations after splash completes to ensure visibility
+    setTimeout(() => {
+      setSplashComplete(true);
+    }, 300);
+  };
+
+  // Don't render until we've checked localStorage
+  if (isChecking) {
+    return null;
+  }
 
   return (
     <>
-      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       
       <div className="relative min-h-screen">
         <Header />
@@ -34,18 +68,20 @@ export default function Home() {
           <div className="relative z-10 container mx-auto px-6 py-32">
             <div className="max-w-5xl mx-auto text-center">
               {/* Top Tagline */}
-              <div className="mb-6 animate-fade-in">
+              <div className={`mb-6 ${splashComplete ? "animate-fade-in" : "opacity-0"}`}>
                 <p className="text-white text-lg font-light tracking-wide">
                   Efficiency Insight. Growth.
                 </p>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight animate-fade-in-delay">
-                The All-In-One CRM Powering HTAFC&apos;s{" "}
-                <span className="relative inline-block text-[#4DA3E0]">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                <span className={`inline-block ${splashComplete ? "animate-text-reveal" : "opacity-0"}`}>
+                  The All-In-One CRM Powering HTAFC&apos;s{" "}
+                </span>
+                <span className={`relative inline-block text-[#4DA3E0] ${splashComplete ? "animate-text-reveal-delay" : "opacity-0"}`}>
                   Growth
-                  <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-[#4DA3E0]"></span>
+                  <span className={`absolute -bottom-2 left-0 w-full h-0.5 bg-[#4DA3E0] ${splashComplete ? "animate-underline-expand" : ""}`}></span>
                   <span className="absolute -bottom-2 left-full ml-0.5 inline-block">
                     <svg 
                       className="text-[#4DA3E0]" 
@@ -61,7 +97,7 @@ export default function Home() {
               </h1>
 
               {/* Description */}
-              <p className="text-white/90 text-lg md:text-xl mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-delay-2">
+              <p className={`text-white/90 text-lg md:text-xl mb-10 max-w-3xl mx-auto leading-relaxed ${splashComplete ? "animate-text-reveal-delay-2" : "opacity-0"}`}>
                 Manage sponsorship products, track donor engagement, monitor
                 campaign performance, and unlock deeper insights.
               </p>
@@ -94,16 +130,18 @@ export default function Home() {
               </p>
 
               {/* Dashboard Teaser Image */}
-              <div className="relative w-full max-w-6xl mx-auto">
-                <Image
-                  src="/assets/DashboardTeaser.png"
-                  alt="HTAFC CRM Dashboard Preview"
-                  width={1200}
-                  height={800}
-                  className="w-full h-auto rounded-lg shadow-2xl"
-                  priority
-                  quality={90}
-                />
+              <div className={`relative w-full max-w-6xl mx-auto ${splashComplete ? "animate-slow-bounce" : ""}`}>
+                <div className={`relative overflow-hidden rounded-lg shadow-2xl ${splashComplete ? "animate-dashboard-reveal" : "opacity-0"}`}>
+                  <Image
+                    src="/assets/DashboardTeaser.png"
+                    alt="HTAFC CRM Dashboard Preview"
+                    width={1200}
+                    height={800}
+                    className="w-full h-auto rounded-lg"
+                    priority
+                    quality={90}
+                  />
+                </div>
               </div>
             </div>
           </div>

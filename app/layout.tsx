@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Albert_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
+import ImagePreloader from "@/components/ImagePreloader";
 
 const albertSans = Albert_Sans({
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${albertSans.variable} font-sans`}>
+        <ImagePreloader />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

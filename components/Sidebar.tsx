@@ -3,17 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import SvgIcon from "./SvgIcon";
 import {
-  HiHome,
-  HiCube,
-  HiServer,
-  HiChartBar,
-  HiUserGroup,
-  HiTicket,
-  HiShoppingBag,
-  HiHand,
-  HiSpeakerphone,
   HiChevronDown,
   HiChevronRight,
   HiMenu,
@@ -22,29 +15,61 @@ import {
 
 interface NavItem {
   name: string;
-  icon: React.ReactNode;
+  iconSrc: string;
   href: string;
   hasDropdown?: boolean;
-  badge?: string;
-  badgeColor?: string;
+  subItems?: { name: string; href: string }[];
+}
+
+interface BottomNavItem {
+  name: string;
+  iconSrc: string;
+  href?: string;
+  onClick?: () => void;
 }
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openDropdowns, setOpenDropdowns] = useState<string[]>([]);
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>(["Sales"]); // Sales open by default
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const navItems: NavItem[] = [
-    { name: "Home", icon: <HiHome className="w-5 h-5" />, href: "/dashboard" },
-    { name: "Products & Assets", icon: <HiCube className="w-5 h-5" />, href: "/products" },
-    { name: "Services", icon: <HiServer className="w-5 h-5" />, href: "/services" },
-    { name: "Reports & Analytics", icon: <HiChartBar className="w-5 h-5" />, href: "/reports" },
-    { name: "Accounts", icon: <HiUserGroup className="w-5 h-5" />, href: "/accounts" },
-    { name: "Ticketing", icon: <HiTicket className="w-5 h-5" />, href: "/ticketing" },
-    { name: "Sales", icon: <HiShoppingBag className="w-5 h-5" />, href: "/sales", hasDropdown: true },
-    { name: "Partnership", icon: <HiHand className="w-5 h-5" />, href: "/partnership", hasDropdown: true, badge: "Partnership", badgeColor: "bg-green-500" },
-    { name: "Marketing", icon: <HiSpeakerphone className="w-5 h-5" />, href: "/marketing", hasDropdown: true, badge: "Marketing", badgeColor: "bg-yellow-500" },
+    { name: "Home", iconSrc: "/assets/icons/HomeIcon.svg", href: "/dashboard" },
+    { name: "Products & Assets", iconSrc: "/assets/icons/ProductIcon.svg", href: "/products" },
+    { name: "Services", iconSrc: "/assets/icons/ServicesIcon.svg", href: "/services" },
+    { name: "Reports & Analytics", iconSrc: "/assets/icons/ReportsIcon.svg", href: "/reports" },
+    { name: "Accounts", iconSrc: "/assets/icons/AccountsIcon.svg", href: "/accounts" },
+    { name: "Ticketing", iconSrc: "/assets/icons/TicketingIcon.svg", href: "/ticketing" },
+    { 
+      name: "Sales", 
+      iconSrc: "/assets/icons/SalesIcon.svg", 
+      href: "/sales/leads", 
+      hasDropdown: true,
+      subItems: [
+        { name: "Leads", href: "/sales/leads" },
+        { name: "Opportunities", href: "/sales/opportunities" },
+        { name: "Packages", href: "/sales/packages" },
+        { name: "Proposals", href: "/sales/proposals" },
+        { name: "Contracts", href: "/sales/contracts" },
+        { name: "Invoices", href: "/sales/invoices" },
+        { name: "Activation", href: "/sales/activation" },
+        { name: "Renewals", href: "/sales/renewals" },
+      ]
+    },
+    { name: "Partnership", iconSrc: "/assets/icons/PartnershipIcon.svg", href: "/partnership", hasDropdown: true },
+    { name: "Marketing", iconSrc: "/assets/icons/MarketingIcon.svg", href: "/marketing", hasDropdown: true },
+  ];
+
+  const bottomNavItems: BottomNavItem[] = [
+    { name: "Help & Support", iconSrc: "/assets/icons/HelpIcon.svg", href: "/help" },
+    { name: "Settings", iconSrc: "/assets/icons/SettingsIcon.svg", href: "/settings" },
+    { name: "Logout", iconSrc: "/assets/icons/LogoutIcon.svg", onClick: async () => {
+      await logout();
+      router.push("/signin");
+    }},
   ];
 
   const toggleDropdown = (name: string) => {
@@ -54,7 +79,11 @@ export default function Sidebar() {
   };
 
   const isActive = (href: string) => {
-    return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
+  const isSalesSubRouteActive = () => {
+    return pathname.startsWith("/sales/") && pathname !== "/sales";
   };
 
   return (
@@ -81,11 +110,14 @@ export default function Sidebar() {
                 <Image
                   src="/assets/hudder-logo.png"
                   alt="Huddersfield Town AFC Logo"
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   className="object-contain"
                 />
-                <span className="text-white font-semibold text-sm">Huddersfield Town AFC</span>
+                <div className="flex flex-col">
+                  <span className="text-white font-semibold text-sm leading-tight">Huddersfield Town</span>
+                  <span className="text-white font-semibold text-sm leading-tight">AFC</span>
+                </div>
               </div>
             )}
             {isCollapsed && (
@@ -93,63 +125,155 @@ export default function Sidebar() {
                 <Image
                   src="/assets/hudder-logo.png"
                   alt="Huddersfield Town AFC Logo"
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   className="object-contain"
                 />
               </div>
             )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden lg:block text-white hover:text-gray-300 p-1.5 bg-white/10 rounded"
+              className="hidden lg:block text-white hover:text-gray-300 p-1.5 rounded"
             >
-              <span className="text-white font-bold text-xs">K</span>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {isCollapsed ? (
+                  // Arrow pointing right with vertical line on the right
+                  <>
+                    <line x1="3" y1="9" x2="12" y2="9" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M9 4.5L12 9L9 13.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="15" y1="3" x2="15" y2="15" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  </>
+                ) : (
+                  // Arrow pointing left with vertical line on the left
+                  <>
+                    <line x1="15" y1="9" x2="6" y2="9" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M9 4.5L6 9L9 13.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="3" y1="3" x2="3" y2="15" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  </>
+                )}
+              </svg>
             </button>
           </div>
 
           {/* Navigation Items */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => (
-              <div key={item.name}>
-                <Link
-                  href={item.href}
-                  onClick={() => {
-                    if (item.hasDropdown) {
-                      toggleDropdown(item.name);
-                    }
-                  }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive(item.href)
-                      ? "bg-primary-600 text-white"
-                      : "text-gray-300 hover:bg-primary-600 hover:text-white"
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto sidebar-nav-scroll">
+            {navItems.map((item) => {
+              const isDropdownOpen = openDropdowns.includes(item.name);
+              const isSalesItem = item.name === "Sales";
+              const hasActiveSubRoute = isSalesItem && isSalesSubRouteActive();
+              
+              // Mark Sales parent as active when any sub-route is active, or use normal active logic
+              const active = (isSalesItem && hasActiveSubRoute) || isActive(item.href);
+              
+              return (
+                <div key={item.name}>
+                  <Link
+                    href={item.href}
+                    onClick={(e) => {
+                      if (item.hasDropdown) {
+                        e.preventDefault();
+                        toggleDropdown(item.name);
+                      }
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                      active
+                        ? "bg-white"
+                        : "text-white hover:bg-white/10"
+                    } ${isCollapsed ? "justify-center" : ""}`}
+                  >
+                    <span className="flex-shrink-0">
+                      <SvgIcon
+                        src={item.iconSrc}
+                        color={active ? "#0072CE" : "white"}
+                        width={18}
+                        height={18}
+                      />
+                    </span>
+                    {!isCollapsed && (
+                      <>
+                        <span className={`flex-1 text-sm font-medium ${active ? "text-primary" : "text-white"}`}>
+                          {item.name}
+                        </span>
+                        {item.hasDropdown && (
+                          <span className={active ? "text-primary" : "text-white"}>
+                            {isDropdownOpen ? (
+                              <HiChevronDown className="w-4 h-4" />
+                            ) : (
+                              <HiChevronRight className="w-4 h-4" />
+                            )}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                  
+                  {/* Sub-items for Sales */}
+                  {isDropdownOpen && item.subItems && !isCollapsed && (
+                    <div className="relative ml-4 mt-1">
+                      {/* Dotted line on the left */}
+                      <div className="absolute left-0 top-0 bottom-0 w-px border-l-2 border-dashed border-white/30"></div>
+                      
+                      <div className="space-y-1 pl-6">
+                        {item.subItems.map((subItem) => {
+                          const isSubActive = pathname === subItem.href || (pathname.startsWith(subItem.href + "/") && pathname !== "/sales");
+                          return (
+                            <Link
+                              key={subItem.name}
+                              href={subItem.href}
+                              className={`block py-2 text-sm transition-colors ${
+                                isSubActive
+                                  ? "font-bold text-white"
+                                  : "font-normal text-white/70 hover:text-white"
+                              }`}
+                            >
+                              {subItem.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Bottom Navigation Items */}
+          <div className="p-4 border-t border-primary-600 space-y-1">
+            {bottomNavItems.map((item) => {
+              const active = item.href ? isActive(item.href) : false;
+              const Component = item.href ? Link : "button";
+              const props = item.href 
+                ? { href: item.href }
+                : { onClick: item.onClick, type: "button" as const };
+
+              return (
+                <Component
+                  key={item.name}
+                  {...props}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${
+                    active
+                      ? "bg-white"
+                      : "text-white hover:bg-white/10"
                   } ${isCollapsed ? "justify-center" : ""}`}
                 >
-                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="flex-shrink-0">
+                    <SvgIcon
+                      src={item.iconSrc}
+                      color={active ? "#0072CE" : "white"}
+                      width={18}
+                      height={18}
+                    />
+                  </span>
                   {!isCollapsed && (
-                    <>
-                      <span className="flex-1 text-sm font-medium">{item.name}</span>
-                      {item.hasDropdown && (
-                        <span>
-                          {openDropdowns.includes(item.name) ? (
-                            <HiChevronDown className="w-4 h-4" />
-                          ) : (
-                            <HiChevronRight className="w-4 h-4" />
-                          )}
-                        </span>
-                      )}
-                      {item.badge && (
-                        <span
-                          className={`px-2 py-0.5 text-xs font-semibold rounded-full ${item.badgeColor} text-white`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
+                    <span className={`text-sm font-medium ${active ? "text-primary" : "text-white"}`}>
+                      {item.name}
+                    </span>
                   )}
-                </Link>
-              </div>
-            ))}
-          </nav>
+                </Component>
+              );
+            })}
+          </div>
         </div>
       </aside>
 

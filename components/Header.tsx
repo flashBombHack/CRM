@@ -42,15 +42,22 @@ export default function Header() {
           {/* Sign In Button */}
           <Link
             href="/signin"
-            className="flex items-center gap-2 text-base font-medium transition-all duration-300 hover:text-primary"
+            className={`group relative flex items-center gap-2 text-base font-medium transition-all duration-300 hover:text-primary px-4 py-2 rounded-lg ${
+              isScrolled 
+                ? "hover:bg-gray-50" 
+                : "hover:bg-white/10"
+            }`}
           >
+            {/* White border on hover */}
+            <div className={`absolute inset-0 rounded-lg border-2 border-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-105 ${isScrolled ? "border-gray-900" : "border-white"}`}></div>
+            
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke={isScrolled ? "currentColor" : "white"}
-              className={`transition-all duration-300 ${isScrolled ? "w-5 h-5 text-gray-900" : "w-6 h-6 text-white"}`}
+              className={`relative z-10 transition-all duration-300 group-hover:scale-110 ${isScrolled ? "w-5 h-5 text-gray-900" : "w-6 h-6 text-white"}`}
             >
               <path
                 strokeLinecap="round"
@@ -58,7 +65,7 @@ export default function Header() {
                 d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
               />
             </svg>
-            <span className={`transition-all duration-300 ${isScrolled ? "text-gray-900 text-sm" : "text-white text-base"}`}>
+            <span className={`relative z-10 transition-all duration-300 group-hover:scale-105 ${isScrolled ? "text-gray-900 text-sm" : "text-white text-base"}`}>
               Sign In
             </span>
           </Link>

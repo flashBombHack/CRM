@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://democrm-rsqo.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://democrm-rsqo.onrender.com';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -247,6 +247,38 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// API Functions
+export interface CreateLeadRequest {
+  firstName: string;
+  role: string | null;
+  companyName: string;
+  email: string;
+  phoneNumber: string | null;
+  website: string | null;
+  preferredContactMethod: string | null;
+  country: string | null;
+  city: string | null;
+  source: string | null;
+  status: string | null;
+  productInterest: string[];
+}
+
+export const leadsApi = {
+  getLeads: async (pageIndex: number = 1, pageSize: number = 20) => {
+    const response = await apiClient.get('/api/Leads', {
+      params: {
+        pageIndex,
+        pageSize,
+      },
+    });
+    return response.data;
+  },
+  createLead: async (leadData: CreateLeadRequest) => {
+    const response = await apiClient.post('/api/Leads', leadData);
+    return response.data;
+  },
+};
 
 export default apiClient;
 

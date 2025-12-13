@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const getApiBaseUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://democrm-rsqo.onrender.com';
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://democrm-rsqo.onrender.com';
   if (url.startsWith('http://') && url.includes('onrender.com')) {
     return url.replace('http://', 'https://');
   }

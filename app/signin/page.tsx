@@ -80,9 +80,9 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="fixed top-0 left-0 right-0 bottom-0 w-full h-full flex overflow-hidden">
       {/* Left Side - Background Image */}
-      <div className="hidden md:flex md:w-2/5 lg:w-2/5 relative">
+      <div className="hidden md:flex md:w-1/2 lg:w-1/2 relative bg-black">
         <Image
           src="/assets/SideBG.png"
           alt="Background"
@@ -94,18 +94,18 @@ export default function SignInPage() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-full md:w-3/5 lg:w-3/5 flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-md">
+      <div className="w-full md:w-1/2 lg:w-1/2 flex items-center justify-center bg-white px-4 sm:px-6 py-2 sm:py-4 overflow-y-auto">
+        <div className="w-full max-w-md relative">
           {/* Create Account Form */}
           <div
-            className={`transition-all duration-500 ease-in-out ${
+            className={`transition-opacity duration-500 ease-out ${
               showSignInForm
-                ? "opacity-0 -translate-x-full absolute pointer-events-none w-full"
-                : "opacity-100 translate-x-0 relative w-full"
+                ? "opacity-0 absolute inset-0 pointer-events-none w-full"
+                : "opacity-100 relative w-full"
             }`}
           >
             {/* Logo */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4">
               <Image
                 src="/assets/hudder-logo.png"
                 alt="Huddersfield Town AFC Logo"
@@ -114,7 +114,7 @@ export default function SignInPage() {
                 className="object-contain"
               />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 text-center">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1 text-center">
               Create your account
             </h1>
 
@@ -204,10 +204,10 @@ export default function SignInPage() {
 
           {/* Sign In Form */}
           <div
-            className={`transition-all duration-500 ease-in-out ${
+            className={`transition-opacity duration-500 ease-out ${
               showSignInForm
-                ? "opacity-100 translate-x-0 relative w-full"
-                : "opacity-0 translate-x-full absolute pointer-events-none w-full"
+                ? "opacity-100 relative w-full"
+                : "opacity-0 absolute inset-0 pointer-events-none w-full"
             }`}
           >
             {/* Logo */}

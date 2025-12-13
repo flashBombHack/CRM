@@ -28,6 +28,15 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-albert-sans)", "system-ui", "sans-serif"],
       },
+      transitionDuration: {
+        "800": "800ms",
+      },
+      transitionDelay: {
+        "300": "300ms",
+        "500": "500ms",
+        "700": "700ms",
+        "1000": "1000ms",
+      },
     },
   },
   plugins: [],
