@@ -4,29 +4,37 @@ import { useEffect } from "react";
 
 export default function ImagePreloader() {
   useEffect(() => {
-    // Preload critical images for landing page and signin screen
-    const imagesToPreload = [
+    // Critical images that must be loaded before rendering
+    const criticalImages = [
+      "/assets/hudder-logo.png",
       "/assets/HeroBG.png",
       "/assets/SideBG.png",
       "/assets/DashboardTeaser.png",
-      "/assets/hudder-logo.png",
     ];
 
-    imagesToPreload.forEach((src) => {
-      const link = document.createElement("link");
-      link.rel = "preload";
-      link.as = "image";
-      link.href = src;
-      document.head.appendChild(link);
+    // Aggressive preloading - create Image objects to force browser to fetch
+    const imagePromises = criticalImages.map((src) => {
+      return new Promise((resolve, reject) => {
+        // Add preload link to head
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = src;
+        link.fetchPriority = "high";
+        document.head.appendChild(link);
+
+        // Also create Image object to force actual loading
+        const img = new Image();
+        img.onload = () => resolve(src);
+        img.onerror = () => reject(new Error(`Failed to load ${src}`));
+        img.src = src;
+      });
     });
 
-    // Cleanup function to remove preload links when component unmounts
-    return () => {
-      imagesToPreload.forEach((src) => {
-        const links = document.querySelectorAll(`link[href="${src}"]`);
-        links.forEach((link) => link.remove());
-      });
-    };
+    // Wait for all critical images to load
+    Promise.all(imagePromises).catch((error) => {
+      console.warn("Some images failed to preload:", error);
+    });
   }, []);
 
   return null;
