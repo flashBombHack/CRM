@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { HiX, HiChevronUp, HiChevronDown } from 'react-icons/hi';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import type { E164Number } from 'react-phone-number-input';
+import type { Value } from 'react-phone-number-input';
 
 interface CreateLeadModalProps {
   isOpen: boolean;
@@ -187,14 +187,14 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
                       Phone Number
                     </label>
                     <div className="phone-input-container">
-                      <PhoneInput
-                        international
-                        defaultCountry="US"
-                        value={formData.phoneNumber as E164Number}
-                        onChange={(value) => handleChange('phoneNumber', value || '')}
-                        placeholder="Enter phone number"
-                        className="phone-input-wrapper"
-                      />
+                    <PhoneInput
+                      international
+                      defaultCountry="US"
+                      value={formData.phoneNumber as Value}
+                      onChange={(value) => handleChange('phoneNumber', value || '')}
+                      placeholder="Enter phone number"
+                      className="phone-input-wrapper"
+                    />
                     </div>
                   </div>
 
