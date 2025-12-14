@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { HiX, HiDotsVertical } from 'react-icons/hi';
+import { useRouter } from 'next/navigation';
 import { contractsApi } from '@/lib/api-client';
 
 interface InvoiceDetail {
@@ -44,6 +45,7 @@ interface InvoiceDetailModalProps {
 }
 
 export default function InvoiceDetailModal({ isOpen, onClose, invoice }: InvoiceDetailModalProps) {
+  const router = useRouter();
   const [contractContID, setContractContID] = useState<string | null>(null);
   const [loadingContract, setLoadingContract] = useState(false);
 
@@ -232,22 +234,29 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoice }: Invoice
             </div>
           </div>
 
-          {/* Related Contact (Contract Details) */}
+          {/* Related Contract */}
           {invoice.contractId && (
             <div className="pt-6 border-t border-gray-200">
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">RELATED CONTACT</h4>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">RELATED CONTRACT</h4>
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Contract ID</p>
                   {loadingContract ? (
                     <p className="text-sm font-medium text-gray-400">Loading...</p>
                   ) : (
-                    <a 
-                      href={`/sales/contracts/${invoice.contractId}`}
-                      className="text-sm font-medium text-primary hover:underline"
+                    <button
+                      onClick={() => {
+                        // Store contractId in sessionStorage to open modal on contracts page
+                        if (typeof window !== 'undefined' && invoice.contractId) {
+                          sessionStorage.setItem('openContractId', invoice.contractId);
+                          router.push('/sales/contracts');
+                          onClose(); // Close invoice modal
+                        }
+                      }}
+                      className="text-sm font-medium text-primary hover:underline cursor-pointer text-left"
                     >
                       {contractContID || invoice.contractId}
-                    </a>
+                    </button>
                   )}
                 </div>
                 <div>

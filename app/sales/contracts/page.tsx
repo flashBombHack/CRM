@@ -77,6 +77,44 @@ export default function ContractsPage() {
     fetchContracts();
   }, [pageIndex, pageSize, activeTab]);
 
+  // Check for contractId from navigation (e.g., from invoice detail modal)
+  useEffect(() => {
+    const openContractId = sessionStorage.getItem('openContractId');
+    if (openContractId && contracts.length > 0) {
+      sessionStorage.removeItem('openContractId');
+      // Find the contract in the current list or fetch it
+      const contract = contracts.find(c => c.id === openContractId);
+      if (contract) {
+        // Use the existing handleContractClick logic
+        contractsApi.getContractById(contract.id)
+          .then(response => {
+            if (response.isSuccess && response.data) {
+              setSelectedContract(response.data);
+              setIsDetailModalOpen(true);
+            }
+          })
+          .catch(err => {
+            console.error("Error fetching contract details:", err);
+            error('Failed to fetch contract details');
+          });
+      } else {
+        // If contract not in current list, fetch it directly
+        contractsApi.getContractById(openContractId)
+          .then(response => {
+            if (response.isSuccess && response.data) {
+              setSelectedContract(response.data);
+              setIsDetailModalOpen(true);
+            }
+          })
+          .catch(err => {
+            console.error("Error fetching contract:", err);
+            error('Failed to fetch contract details');
+          });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contracts]);
+
   const getStatusColor = (status: string | null) => {
     if (!status) return { bg: "bg-gray-200", text: "text-gray-700" };
     const statusLower = status.toLowerCase();
