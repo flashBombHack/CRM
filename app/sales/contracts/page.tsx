@@ -65,8 +65,8 @@ export default function ContractsPage() {
         setContracts(response.data.data);
         setTotalCount(response.data.totalCount);
       }
-    } catch (error) {
-      console.error("Error fetching contracts:", error);
+    } catch (err) {
+      console.error("Error fetching contracts:", err);
       error('Failed to fetch contracts');
     } finally {
       setLoading(false);
