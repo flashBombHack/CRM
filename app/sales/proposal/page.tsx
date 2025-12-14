@@ -69,6 +69,7 @@ export default function ProposalPage() {
   const [editFormData, setEditFormData] = useState<CreateProposalFormData | null>(null);
   const [deleteProposalId, setDeleteProposalId] = useState<string | null>(null);
   const { toasts, success, error, removeToast } = useToast();
+  const router = useRouter();
 
   const fetchProposals = async () => {
     try {
@@ -218,7 +219,7 @@ export default function ProposalPage() {
           }
         };
 
-        const proposalInvoiceItems = fullProposal.proposalInvoiceItems?.map(item => {
+        const proposalInvoiceItems = fullProposal.proposalInvoiceItems?.map((item: { installment: string | null; price: number; dueDate: string }) => {
           const price = item.price || 0;
           return {
             installment: item.installment || '',
@@ -255,8 +256,8 @@ export default function ProposalPage() {
         setEditFormData(formData);
         // Modal will open via useEffect when editFormData is set
       }
-    } catch (error) {
-      console.error("Error fetching proposal for edit:", error);
+    } catch (err) {
+      console.error("Error fetching proposal for edit:", err);
       error('Failed to fetch proposal details');
     }
   };
@@ -333,10 +334,10 @@ export default function ProposalPage() {
       }
 
       const proposalData: CreateProposalRequest = {
-        company: formData.company || null,
-        firstName: formData.firstName || null,
-        lastName: formData.lastName || null,
-        email: formData.email || null,
+        company: formData.company || '',
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
+        email: formData.email || '',
         phoneNumber: formData.phoneNumber || null,
         package: formData.package || null,
         terms: formData.terms || null,
@@ -347,7 +348,7 @@ export default function ProposalPage() {
         total: convertPrice(formData.total),
         cvResumeFileName: cvResumeFileName,
         cvResumeFilePath: cvResumeFilePath,
-        status: formData.status || null,
+        status: formData.status || 'Draft',
         proposalInvoiceItems: formData.proposalInvoiceItems.map(item => ({
           installment: item.installment || '',
           price: convertPrice(item.price) || 0,

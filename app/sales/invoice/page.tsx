@@ -138,8 +138,8 @@ export default function InvoicePage() {
         setSelectedInvoice(response.data);
         setIsDetailModalOpen(true);
       }
-    } catch (error) {
-      console.error("Error fetching invoice details:", error);
+    } catch (err) {
+      console.error("Error fetching invoice details:", err);
       error('Failed to fetch invoice details');
     }
   };
@@ -177,7 +177,7 @@ export default function InvoicePage() {
         };
 
         // Convert invoice items
-        const invoiceItems = fullInvoice.invoiceItems?.map(item => {
+        const invoiceItems = fullInvoice.invoiceItems?.map((item: { itemDescription: string | null; quantity: number; unitPrice: number }) => {
           const qty = item.quantity || 0;
           const price = item.unitPrice || 0;
           const total = qty * price;
@@ -219,8 +219,8 @@ export default function InvoicePage() {
         setEditFormData(formData);
         setIsCreateModalOpen(true);
       }
-    } catch (error) {
-      console.error("Error fetching invoice for edit:", error);
+    } catch (err) {
+      console.error("Error fetching invoice for edit:", err);
       error('Failed to fetch invoice details');
     }
   };
@@ -314,18 +314,18 @@ export default function InvoicePage() {
       }
 
       const invoiceData: CreateInvoiceRequest = {
-        companyName: formData.companyName || null,
-        primaryName: formData.primaryName || null,
-        email: formData.email || null,
+        companyName: formData.companyName || '',
+        primaryName: formData.primaryName || '',
+        email: formData.email || '',
         phoneNumberCountryCode: phoneNumberCountryCode,
         phoneNumber: phoneNumber,
         billingAddress: formData.billingAddress || null,
-        totalAmount: totalAmount || null,
-        amountBilled: amountBilled || null,
-        amountDue: amountDue || null,
-        billedOnDate: convertDate(formData.billedOnDate),
-        dueDate: convertDate(formData.dueDate),
-        status: formData.status || null,
+        totalAmount: totalAmount || 0,
+        amountBilled: amountBilled || 0,
+        amountDue: amountDue || 0,
+        billedOnDate: convertDate(formData.billedOnDate) || new Date().toISOString(),
+        dueDate: convertDate(formData.dueDate) || new Date().toISOString(),
+        status: formData.status || 'Draft',
         invoiceNotes: formData.invoiceNotes || null,
         contractId: formData.contractId || null,
         packageSold: formData.packageSold || null,

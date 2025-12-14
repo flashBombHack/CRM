@@ -142,7 +142,7 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Discount</p>
-                <p className="text-sm font-medium text-gray-900">{formatPrice(contract.discount)}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.discount || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Final Price</p>

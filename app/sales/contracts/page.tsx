@@ -77,7 +77,8 @@ export default function ContractsPage() {
     fetchContracts();
   }, [pageIndex, pageSize, activeTab]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
+    if (!status) return { bg: "bg-gray-200", text: "text-gray-700" };
     const statusLower = status.toLowerCase();
     switch (statusLower) {
       case "grey":

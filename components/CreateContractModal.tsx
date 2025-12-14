@@ -20,6 +20,7 @@ export interface CreateContractFormData {
   email: string;
   phoneNumber: string;
   contractDetails: string;
+  status?: string;
   season: string;
   startDate: string;
   endDate: string;
@@ -92,7 +93,6 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit, initial
         email: '',
         phoneNumber: '',
         contractDetails: '',
-        status: '',
         season: '',
         startDate: '01/01/2025',
         endDate: '30/12/2025',
