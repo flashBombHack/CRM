@@ -149,8 +149,8 @@ export default function ContractsPage() {
         setSelectedContract(response.data);
         setIsDetailModalOpen(true);
       }
-    } catch (error) {
-      console.error("Error fetching contract details:", error);
+    } catch (err) {
+      console.error("Error fetching contract details:", err);
       error('Failed to fetch contract details');
     }
   };
@@ -214,8 +214,8 @@ export default function ContractsPage() {
         setEditFormData(formData);
         setIsCreateModalOpen(true);
       }
-    } catch (error) {
-      console.error("Error fetching contract for edit:", error);
+    } catch (err) {
+      console.error("Error fetching contract for edit:", err);
       error('Failed to fetch contract details');
     }
   };
