@@ -318,7 +318,7 @@ export default function ContractsPage() {
         companyName: formData.companyName,
         email: formData.email,
         phoneNumber: formData.phoneNumber || null,
-        status: formData.status || '',
+        status: editingContract?.status || 'Draft',
         details: formData.contractDetails || '',
         season: formData.season || null,
         startDate: convertDate(formData.startDate),
