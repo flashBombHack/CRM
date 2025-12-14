@@ -9,7 +9,7 @@ import CreateContractModal, { CreateContractFormData } from "@/components/Create
 import ContractActionsDropdown from "@/components/ContractActionsDropdown";
 import { ToastContainer } from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
-import { contractsApi, CreateContractRequest } from "@/lib/api-client";
+import { contractsApi, CreateContractRequest, ContractInvoiceItem } from "@/lib/api-client";
 import { HiSearch, HiChevronDown, HiPlus } from "react-icons/hi";
 
 interface Contract {
@@ -183,7 +183,7 @@ export default function ContractsPage() {
         };
 
         // Convert invoice items
-        const invoiceItems = fullContract.contractInvoiceItems?.map(item => ({
+        const invoiceItems = fullContract.contractInvoiceItems?.map((item: { installment: string | null; price: number; dueDate: string }) => ({
           instalment: item.installment || '',
           price: formatPriceForForm(item.price),
           dueDate: formatDateForForm(item.dueDate),
