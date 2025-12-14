@@ -463,7 +463,7 @@ export default function LeadDetailPage() {
                                 </svg>
                               </div>
                               <p className="text-xs sm:text-sm text-gray-900">
-                                <span className="font-semibold">High match</span> — 3 products align with this lead's company size.
+                                <span className="font-semibold">High match</span> — 3 products align with this lead&apos;s company size.
                               </p>
                             </div>
                           </div>
