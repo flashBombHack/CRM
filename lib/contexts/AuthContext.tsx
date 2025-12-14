@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '../services/auth.service';
 import { tokenStorage } from '../api-client';
@@ -23,92 +23,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Initialize auth state on mount
-  useEffect(() => {
-    initializeAuth();
-  }, []);
-
-  // Check token expiry periodically
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const checkTokenExpiry = () => {
-      // Only check if token is actually expired
-      if (tokenStorage.isTokenExpired()) {
-        const refreshToken = tokenStorage.getRefreshToken();
-        if (refreshToken) {
-          // Try to refresh, but don't logout on failure (handled in refreshAuth)
-          refreshAuth().catch(() => {
-            // Error already handled in refreshAuth - only logs out if token is expired
-          });
-        } else {
-          // No refresh token and token is expired - must logout
-          handleLogout();
-        }
-      }
-    };
-
-    // Check every 5 minutes (less aggressive)
-    const interval = setInterval(checkTokenExpiry, 300000);
-    checkTokenExpiry(); // Check immediately
-
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
-  const initializeAuth = async () => {
+  const handleLogout = useCallback(async () => {
     try {
-      const currentUser = authService.getCurrentUser();
-      const authenticated = authService.isAuthenticated();
-
-      if (authenticated && currentUser) {
-        setUser(currentUser);
-        setIsAuthenticated(true);
-        
-        // If token is expired but refresh token exists, try to refresh
-        if (tokenStorage.isTokenExpired()) {
-          const refreshToken = tokenStorage.getRefreshToken();
-          if (refreshToken) {
-            await refreshAuth();
-          }
-        }
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
+      const refreshToken = tokenStorage.getRefreshToken();
+      if (refreshToken) {
+        // Try to logout on server, but don't wait for it or throw errors
+        await authService.logout(refreshToken).catch(() => {
+          // Ignore logout API errors - we'll clear tokens locally anyway
+        });
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      // Ignore all logout errors - we're clearing tokens locally
+    } finally {
+      // Always clear state regardless of API call success
       setUser(null);
       setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
+      tokenStorage.clearAll();
+      router.push('/signin');
     }
-  };
+  }, [router]);
 
-  const login = async (credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
-    try {
-      setIsLoading(true);
-      const response = await authService.login(credentials);
-
-      if (response.isSuccess && response.data) {
-        const { email, userId, firstName, lastName } = response.data;
-        const userData = { email, userId, firstName, lastName };
-        
-        setUser(userData);
-        setIsAuthenticated(true);
-        
-        // Redirect to dashboard
-        router.push('/dashboard');
-      }
-
-      return response;
-    } catch (error: any) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const refreshAuth = async () => {
+  const refreshAuth = useCallback(async () => {
     try {
       const refreshToken = tokenStorage.getRefreshToken();
       if (!refreshToken) {
@@ -153,27 +88,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Token refresh failed but token may still be valid:', error);
       }
     }
-  };
+  }, [handleLogout]);
 
-  const handleLogout = async () => {
+  const initializeAuth = useCallback(async () => {
     try {
-      const refreshToken = tokenStorage.getRefreshToken();
-      if (refreshToken) {
-        // Try to logout on server, but don't wait for it or throw errors
-        await authService.logout(refreshToken).catch(() => {
-          // Ignore logout API errors - we'll clear tokens locally anyway
-        });
+      const currentUser = authService.getCurrentUser();
+      const authenticated = authService.isAuthenticated();
+
+      if (authenticated && currentUser) {
+        setUser(currentUser);
+        setIsAuthenticated(true);
+        
+        // If token is expired but refresh token exists, try to refresh
+        if (tokenStorage.isTokenExpired()) {
+          const refreshToken = tokenStorage.getRefreshToken();
+          if (refreshToken) {
+            await refreshAuth();
+          }
+        }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
-      // Ignore all logout errors - we're clearing tokens locally
-    } finally {
-      // Always clear state regardless of API call success
+      console.error('Auth initialization error:', error);
       setUser(null);
       setIsAuthenticated(false);
-      tokenStorage.clearAll();
-      router.push('/signin');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshAuth]);
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Check token expiry periodically
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkTokenExpiry = () => {
+      // Only check if token is actually expired
+      if (tokenStorage.isTokenExpired()) {
+        const refreshToken = tokenStorage.getRefreshToken();
+        if (refreshToken) {
+          // Try to refresh, but don't logout on failure (handled in refreshAuth)
+          refreshAuth().catch(() => {
+            // Error already handled in refreshAuth - only logs out if token is expired
+          });
+        } else {
+          // No refresh token and token is expired - must logout
+          handleLogout();
+        }
+      }
+    };
+
+    // Check every 5 minutes (less aggressive)
+    const interval = setInterval(checkTokenExpiry, 300000);
+    checkTokenExpiry(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, refreshAuth, handleLogout]);
+
+
+  const login = async (credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
+    try {
+      setIsLoading(true);
+      const response = await authService.login(credentials);
+
+      if (response.isSuccess && response.data) {
+        const { email, userId, firstName, lastName } = response.data;
+        const userData = { email, userId, firstName, lastName };
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        // Redirect to dashboard
+        router.push('/dashboard');
+      }
+
+      return response;
+    } catch (error: any) {
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
+
 
   const logout = async () => {
     await handleLogout();

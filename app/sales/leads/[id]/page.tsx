@@ -440,7 +440,7 @@ export default function LeadDetailPage() {
                             </div>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                               <span className="text-xs sm:text-sm text-gray-500">Original Message</span>
-                              <span className="text-xs sm:text-sm text-gray-900 font-medium text-right sm:text-left italic">"Interested in matchday hospitality package for corporate guests."</span>
+                              <span className="text-xs sm:text-sm text-gray-900 font-medium text-right sm:text-left italic">&quot;Interested in matchday hospitality package for corporate guests.&quot;</span>
                             </div>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                               <span className="text-xs sm:text-sm text-gray-500">Product Interest</span>
