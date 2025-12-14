@@ -65,7 +65,8 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
         const discountValue = field === 'discount' ? value : prev.discount;
         
         // Extract numeric value from price (remove £, commas, and "000")
-        const priceNum = parseFloat(priceValue.toString().replace(/[£,]/g, '').replace('000', '')) || 0;
+        const priceStr = priceValue && typeof priceValue === 'string' ? priceValue : prev.totalAgreedPrice || '0';
+        const priceNum = parseFloat(priceStr.replace(/[£,]/g, '').replace('000', '')) || 0;
         
         // Calculate discount amount if discount is a percentage
         let discountAmount = 0;
