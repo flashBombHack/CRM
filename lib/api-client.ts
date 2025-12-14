@@ -307,6 +307,7 @@ export interface CreateContractRequest {
   email: string;
   phoneNumber: string | null;
   status: string;
+  details: string | null;
   season: string | null;
   startDate: string | null;
   endDate: string | null;
