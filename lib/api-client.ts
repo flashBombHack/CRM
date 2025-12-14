@@ -274,6 +274,10 @@ export const leadsApi = {
     });
     return response.data;
   },
+  getLeadById: async (id: string) => {
+    const response = await apiClient.get(`/api/Leads/${id}`);
+    return response.data;
+  },
   createLead: async (leadData: CreateLeadRequest) => {
     const response = await apiClient.post('/api/Leads', leadData);
     return response.data;

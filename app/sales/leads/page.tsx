@@ -280,7 +280,10 @@ export default function LeadsPage() {
                               />
                             </td>
                             <td className="px-4 py-3">
-                              <a href="#" className="text-primary hover:underline text-sm font-medium">
+                              <a 
+                                href={`/sales/leads/${lead.id}`}
+                                className="text-primary hover:underline text-sm font-medium"
+                              >
                                 {getLeadName(lead)}
                               </a>
                             </td>

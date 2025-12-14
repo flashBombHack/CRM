@@ -25,10 +25,13 @@ export interface CreateLeadFormData {
   source: string;
   status: string;
   productInterest: string[];
+  numberOfEmployees: string;
+  estimatedPotential: string;
 }
 
 export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLeadModalProps) {
   const [isContactInfoExpanded, setIsContactInfoExpanded] = useState(true);
+  const [isOtherInfoExpanded, setIsOtherInfoExpanded] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateLeadFormData>({
     firstName: '',
@@ -43,6 +46,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
     source: '',
     status: '',
     productInterest: [],
+    numberOfEmployees: '',
+    estimatedPotential: '',
   });
 
   const handleChange = (field: keyof CreateLeadFormData, value: string) => {
@@ -80,6 +85,8 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
         source: '',
         status: '',
         productInterest: [],
+        numberOfEmployees: '',
+        estimatedPotential: '',
       });
       onClose();
     } catch (error) {
@@ -268,14 +275,122 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
                 </div>
               )}
             </div>
+
+            {/* Other Information Section */}
+            <div className="mb-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsOtherInfoExpanded(!isOtherInfoExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-200 text-left bg-[#FAFAFA] rounded-t-lg"
+                >
+                  <h3 className="text-base font-semibold text-gray-900">Other Information</h3>
+                  {isOtherInfoExpanded ? (
+                    <HiChevronUp className="w-5 h-5 text-gray-600" />
+                  ) : (
+                    <HiChevronDown className="w-5 h-5 text-gray-600" />
+                  )}
+                </button>
+
+                {isOtherInfoExpanded && (
+                  <div className="px-4 py-4 space-y-4">
+                    <div>
+                      <label className="block text-sm font-normal text-gray-700 mb-1">
+                        No of employees
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formData.numberOfEmployees}
+                          onChange={(e) => handleChange('numberOfEmployees', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10"
+                        >
+                          <option value="">Select an option</option>
+                          <option value="1-10">1-10</option>
+                          <option value="11-50">11-50</option>
+                          <option value="51-200">51-200</option>
+                          <option value="201-500">201-500</option>
+                          <option value="501-1000">501-1000</option>
+                          <option value="1000+">1000+</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <HiChevronDown className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-normal text-gray-700 mb-1">
+                        Estimated potential
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.estimatedPotential}
+                        onChange={(e) => handleChange('estimatedPotential', e.target.value)}
+                        placeholder="£0,000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-normal text-gray-700 mb-1">
+                        Lead status
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formData.status}
+                          onChange={(e) => handleChange('status', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10"
+                        >
+                          <option value="">Select an option</option>
+                          <option value="new">New</option>
+                          <option value="contacted">Contacted</option>
+                          <option value="nurturing">Nurturing</option>
+                          <option value="qualified">Qualified</option>
+                          <option value="converted">Converted</option>
+                          <option value="lost">Lost</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <HiChevronDown className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-normal text-gray-700 mb-1">
+                        Lead Source
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={formData.source}
+                          onChange={(e) => handleChange('source', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10"
+                        >
+                          <option value="">Select an option</option>
+                          <option value="website">Website</option>
+                          <option value="referral">Referral</option>
+                          <option value="social-media">Social Media</option>
+                          <option value="email-campaign">Email Campaign</option>
+                          <option value="cold-call">Cold Call</option>
+                          <option value="trade-show">Trade Show</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <HiChevronDown className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
             </button>
@@ -283,7 +398,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
               type="submit"
               disabled={!isFormValid || isSubmitting}
               className={`
-                px-4 py-2 rounded-lg font-medium transition-colors
+                flex-1 px-4 py-2 rounded-lg font-medium transition-colors
                 ${isFormValid && !isSubmitting
                   ? 'bg-primary text-white hover:bg-primary-600'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'

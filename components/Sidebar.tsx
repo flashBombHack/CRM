@@ -49,14 +49,16 @@ export default function Sidebar() {
       href: "/sales/leads", 
       hasDropdown: true,
       subItems: [
-        { name: "Leads", href: "/sales/leads" },
-        { name: "Opportunities", href: "/sales/opportunities" },
-        { name: "Packages", href: "/sales/packages" },
-        { name: "Proposals", href: "/sales/proposals" },
-        { name: "Contracts", href: "/sales/contracts" },
-        { name: "Invoices", href: "/sales/invoices" },
-        { name: "Activation", href: "/sales/activation" },
-        { name: "Renewals", href: "/sales/renewals" },
+        { name: "Stage 1 – Leads", href: "/sales/leads" },
+        { name: "Stage 2 – Qualification", href: "/sales/qualification" },
+        { name: "Stage 3 – Opportunity", href: "/sales/opportunity" },
+        { name: "Stage 4 – Discovery", href: "/sales/discovery" },
+        { name: "Stage 5 – Proposal", href: "/sales/proposal" },
+        { name: "Stage 6 – Contracts", href: "/sales/contracts" },
+        { name: "Stage 7 – Activation", href: "/sales/activation" },
+        { name: "Stage 8 – Invoice", href: "/sales/invoice" },
+        { name: "Stage 9 – Customer", href: "/sales/customer" },
+        { name: "Stage 10 – Renewal", href: "/sales/renewal" },
       ]
     },
     { name: "Partnership", iconSrc: "/assets/icons/PartnershipIcon.svg", href: "/partnership", hasDropdown: true },
@@ -215,7 +217,7 @@ export default function Sidebar() {
                       
                       <div className="space-y-1 pl-6">
                         {item.subItems.map((subItem) => {
-                          const isSubActive = pathname === subItem.href || (pathname.startsWith(subItem.href + "/") && pathname !== "/sales");
+                          const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href + "/");
                           return (
                             <Link
                               key={subItem.name}
