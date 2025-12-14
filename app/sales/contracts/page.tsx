@@ -199,7 +199,6 @@ export default function ContractsPage() {
           email: fullContract.email || '',
           phoneNumber: fullContract.phoneNumber || '',
           contractDetails: fullContract.details || '',
-          status: fullContract.status || '',
           season: fullContract.season || '',
           startDate: formatDateForForm(fullContract.startDate),
           endDate: formatDateForForm(fullContract.endDate),
