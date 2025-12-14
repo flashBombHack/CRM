@@ -5,10 +5,11 @@ import Sidebar from "@/components/Sidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CreateLeadModal, { CreateLeadFormData } from "@/components/CreateLeadModal";
+import LeadActionsDropdown from "@/components/LeadActionsDropdown";
 import { ToastContainer } from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
 import { leadsApi, CreateLeadRequest } from "@/lib/api-client";
-import { HiSearch, HiChevronDown, HiDotsVertical, HiPlus } from "react-icons/hi";
+import { HiSearch, HiChevronDown, HiPlus } from "react-icons/hi";
 
 interface Lead {
   id: string;
@@ -23,6 +24,8 @@ interface Lead {
   city: string | null;
   source: string | null;
   status: string | null;
+  noOfEmployees?: string | null;
+  estimatedPotential?: number | null;
   productInterest: string[];
 }
 
@@ -51,6 +54,8 @@ export default function LeadsPage() {
   const [selectAll, setSelectAll] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
   const { toasts, success, error, removeToast } = useToast();
 
   const fetchLeads = useCallback(async () => {
@@ -116,35 +121,52 @@ export default function LeadsPage() {
     setSelectAll(newSelected.size === leads.length);
   };
 
+  const prepareLeadData = (formData: CreateLeadFormData): CreateLeadRequest => {
+    // Phone number is already in E.164 format (e.g., +1234567890) from PhoneInput component
+    const phoneNumber = formData.phoneNumber && formData.phoneNumber.trim() 
+      ? formData.phoneNumber.trim() 
+      : null;
+
+    // Convert estimatedPotential from string to number
+    // Remove currency symbols, commas, and whitespace, then parse
+    let estimatedPotential: number | null = null;
+    if (formData.estimatedPotential && formData.estimatedPotential.trim()) {
+      const cleanedValue = formData.estimatedPotential
+        .replace(/[£$€,]/g, '')
+        .trim();
+      const parsed = parseFloat(cleanedValue);
+      if (!isNaN(parsed)) {
+        estimatedPotential = parsed;
+      }
+    }
+
+    return {
+      firstName: formData.firstName,
+      role: formData.role || null,
+      companyName: formData.companyName,
+      email: formData.email,
+      phoneNumber: phoneNumber,
+      website: formData.website || null,
+      preferredContactMethod: formData.preferredContactMethod || null,
+      country: formData.country || null,
+      city: formData.city || null,
+      source: formData.source || null,
+      status: formData.status || null,
+      noOfEmployees: formData.numberOfEmployees || null,
+      estimatedPotential: estimatedPotential,
+      productInterest: formData.productInterest || [],
+    };
+  };
+
   const handleCreateLead = async (formData: CreateLeadFormData) => {
     try {
-      // Phone number is already in E.164 format (e.g., +1234567890) from PhoneInput component
-      const phoneNumber = formData.phoneNumber && formData.phoneNumber.trim() 
-        ? formData.phoneNumber.trim() 
-        : null;
-
-      // Prepare API request
-      const leadData: CreateLeadRequest = {
-        firstName: formData.firstName,
-        role: formData.role || null,
-        companyName: formData.companyName,
-        email: formData.email,
-        phoneNumber: phoneNumber,
-        website: formData.website || null,
-        preferredContactMethod: formData.preferredContactMethod || null,
-        country: formData.country || null,
-        city: formData.city || null,
-        source: formData.source || null,
-        status: formData.status || null,
-        productInterest: formData.productInterest || [],
-      };
-
+      const leadData = prepareLeadData(formData);
       const response = await leadsApi.createLead(leadData);
 
       if (response.isSuccess) {
         success('Lead created successfully!');
-        // Refresh the leads list
         await fetchLeads();
+        setIsModalOpen(false);
       } else {
         const errorMessage = response.message || response.errors?.[0] || 'Failed to create lead';
         error(errorMessage);
@@ -160,14 +182,137 @@ export default function LeadsPage() {
     }
   };
 
+  const handleEditLead = async (formData: CreateLeadFormData) => {
+    if (!editingLead) return;
+    
+    try {
+      const leadData = prepareLeadData(formData);
+      const response = await leadsApi.updateLead(editingLead.id, leadData);
+
+      if (response.isSuccess) {
+        success('Lead updated successfully!');
+        await fetchLeads();
+        setEditingLead(null);
+        setIsModalOpen(false);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to update lead';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to update lead. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!deleteLeadId) return;
+
+    try {
+      const response = await leadsApi.deleteLead(deleteLeadId);
+
+      if (response.isSuccess) {
+        success('Lead deleted successfully!');
+        await fetchLeads();
+        setDeleteLeadId(null);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to delete lead';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to delete lead. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
+  const openEditModal = (lead: Lead) => {
+    // Fetch full lead data to get all fields including noOfEmployees and estimatedPotential
+    leadsApi.getLeadById(lead.id).then((response) => {
+      if (response.isSuccess && response.data) {
+        const fullLead = response.data;
+        // Merge the full lead data with the existing lead
+        const updatedLead: Lead = {
+          ...lead,
+          noOfEmployees: fullLead.noOfEmployees || null,
+          estimatedPotential: fullLead.estimatedPotential || null,
+        };
+        setEditingLead(updatedLead);
+        setIsModalOpen(true);
+      }
+    }).catch(() => {
+      // Fallback to basic data if fetch fails
+      setEditingLead(lead);
+      setIsModalOpen(true);
+    });
+  };
+
+  const openDeleteConfirm = (leadId: string) => {
+    setDeleteLeadId(leadId);
+  };
+
   return (
     <ProtectedRoute>
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <CreateLeadModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleCreateLead}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingLead(null);
+        }}
+        onSubmit={editingLead ? handleEditLead : handleCreateLead}
+        initialData={editingLead ? {
+          firstName: editingLead.firstName || '',
+          role: editingLead.role || '',
+          companyName: editingLead.companyName || '',
+          email: editingLead.email || '',
+          phoneNumber: editingLead.phoneNumber || '',
+          website: editingLead.website || '',
+          preferredContactMethod: editingLead.preferredContactMethod || '',
+          country: editingLead.country || '',
+          city: editingLead.city || '',
+          source: editingLead.source || '',
+          status: editingLead.status || '',
+          productInterest: editingLead.productInterest || [],
+          numberOfEmployees: (editingLead as any).noOfEmployees || '',
+          estimatedPotential: (editingLead as any).estimatedPotential ? `£${(editingLead as any).estimatedPotential.toLocaleString('en-GB')}` : '',
+        } : null}
+        isEditMode={!!editingLead}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      {deleteLeadId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Lead</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this lead? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setDeleteLeadId(null)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteLead}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
         
@@ -342,9 +487,11 @@ export default function LeadsPage() {
                               )}
                             </td>
                             <td className="px-4 py-3">
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <HiDotsVertical className="w-5 h-5" />
-                              </button>
+                              <LeadActionsDropdown
+                                leadId={lead.id}
+                                onEdit={() => openEditModal(lead)}
+                                onDelete={() => openDeleteConfirm(lead.id)}
+                              />
                             </td>
                           </tr>
                         ))

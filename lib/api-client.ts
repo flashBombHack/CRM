@@ -261,6 +261,8 @@ export interface CreateLeadRequest {
   city: string | null;
   source: string | null;
   status: string | null;
+  noOfEmployees: string | null;
+  estimatedPotential: number | null;
   productInterest: string[];
 }
 
@@ -280,6 +282,181 @@ export const leadsApi = {
   },
   createLead: async (leadData: CreateLeadRequest) => {
     const response = await apiClient.post('/api/Leads', leadData);
+    return response.data;
+  },
+  updateLead: async (id: string, leadData: CreateLeadRequest) => {
+    const response = await apiClient.put(`/api/Leads/update/${id}`, leadData);
+    return response.data;
+  },
+  deleteLead: async (id: string) => {
+    const response = await apiClient.delete(`/api/Leads/${id}`);
+    return response.data;
+  },
+};
+
+// Contracts API
+export interface ContractInvoiceItem {
+  installment: string;
+  price: number;
+  dueDate: string;
+}
+
+export interface CreateContractRequest {
+  name: string;
+  companyName: string;
+  email: string;
+  phoneNumber: string | null;
+  status: string;
+  season: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  totalAgreedPrice: number | null;
+  discount: string | null;
+  finalPrice: number | null;
+  cvResumeBase64: string | null;
+  cvResumeFileName: string | null;
+  contractInvoiceItems: ContractInvoiceItem[];
+}
+
+export const contractsApi = {
+  getContracts: async (pageIndex: number = 1, pageSize: number = 20, status: string | null = null) => {
+    const response = await apiClient.get('/api/Contracts', {
+      params: {
+        pageIndex,
+        pageSize,
+        ...(status && status !== 'All contracts' && { status }),
+      },
+    });
+    return response.data;
+  },
+  getContractById: async (id: string) => {
+    const response = await apiClient.get(`/api/Contracts/${id}`);
+    return response.data;
+  },
+  createContract: async (contractData: CreateContractRequest) => {
+    const response = await apiClient.post('/api/Contracts', contractData);
+    return response.data;
+  },
+  deleteContract: async (id: string) => {
+    const response = await apiClient.delete(`/api/Contracts/${id}`);
+    return response.data;
+  },
+  updateContract: async (id: string, contractData: CreateContractRequest) => {
+    const response = await apiClient.put(`/api/Contracts/update/${id}`, contractData);
+    return response.data;
+  },
+};
+
+// Invoices API
+export interface InvoiceItem {
+  id?: string | null;
+  item: string | null;
+  qty: number | null;
+  price: number | null;
+}
+
+export interface CreateInvoiceRequest {
+  companyName: string;
+  primaryName: string;
+  email: string;
+  phoneNumberCountryCode: string | null;
+  phoneNumber: string | null;
+  billingAddress: string | null;
+  totalAmount: number;
+  amountBilled: number;
+  amountDue: number;
+  billedOnDate: string;
+  dueDate: string;
+  status: string;
+  invoiceNotes: string | null;
+  contractId: string | null;
+  packageSold: string | null;
+  contractValue: number | null;
+  contractStartDate: string | null;
+  contractEndDate: string | null;
+  invoiceItems: InvoiceItem[];
+}
+
+export const invoicesApi = {
+  getInvoices: async (pageIndex: number = 1, pageSize: number = 20, status: string | null = null) => {
+    const response = await apiClient.get('/api/Invoices', {
+      params: {
+        pageIndex,
+        pageSize,
+        ...(status && status !== 'All invoices' && { status }),
+      },
+    });
+    return response.data;
+  },
+  getInvoiceById: async (id: string) => {
+    const response = await apiClient.get(`/api/Invoices/${id}`);
+    return response.data;
+  },
+  createInvoice: async (invoiceData: CreateInvoiceRequest) => {
+    const response = await apiClient.post('/api/Invoices', invoiceData);
+    return response.data;
+  },
+  updateInvoice: async (id: string, invoiceData: CreateInvoiceRequest) => {
+    const response = await apiClient.put(`/api/Invoices/update/${id}`, invoiceData);
+    return response.data;
+  },
+  deleteInvoice: async (id: string) => {
+    const response = await apiClient.delete(`/api/Invoices/${id}`);
+    return response.data;
+  },
+};
+
+// Proposals API
+export interface ProposalInvoiceItem {
+  installment: string;
+  price: number;
+  dueDate: string;
+}
+
+export interface CreateProposalRequest {
+  company: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string | null;
+  package: string | null;
+  terms: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  price: number | null;
+  discount: number | null;
+  total: number | null;
+  cvResumeFileName: string | null;
+  cvResumeFilePath: string | null;
+  status: string;
+  proposalInvoiceItems: ProposalInvoiceItem[] | null;
+}
+
+export const proposalsApi = {
+  getProposals: async (pageIndex: number = 1, pageSize: number = 20, status: string | null = null) => {
+    const response = await apiClient.get('/api/Proposals', {
+      params: {
+        pageIndex,
+        pageSize,
+        ...(status && { status }),
+      },
+    });
+    return response.data;
+  },
+  getProposalById: async (id: string) => {
+    const response = await apiClient.get(`/api/Proposals/${id}`);
+    return response.data;
+  },
+  createProposal: async (proposalData: CreateProposalRequest) => {
+    const response = await apiClient.post('/api/Proposals', proposalData);
+    return response.data;
+  },
+  updateProposal: async (id: string, proposalData: CreateProposalRequest) => {
+    const response = await apiClient.put(`/api/Proposals/update/${id}`, proposalData);
+    return response.data;
+  },
+  deleteProposal: async (id: string) => {
+    const response = await apiClient.delete(`/api/Proposals/${id}`);
     return response.data;
   },
 };

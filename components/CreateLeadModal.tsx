@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiX, HiChevronUp, HiChevronDown } from 'react-icons/hi';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
@@ -10,6 +10,8 @@ interface CreateLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateLeadFormData) => Promise<void>;
+  initialData?: CreateLeadFormData | null;
+  isEditMode?: boolean;
 }
 
 export interface CreateLeadFormData {
@@ -29,7 +31,7 @@ export interface CreateLeadFormData {
   estimatedPotential: string;
 }
 
-export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLeadModalProps) {
+export default function CreateLeadModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateLeadModalProps) {
   const [isContactInfoExpanded, setIsContactInfoExpanded] = useState(true);
   const [isOtherInfoExpanded, setIsOtherInfoExpanded] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +51,46 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
     numberOfEmployees: '',
     estimatedPotential: '',
   });
+
+  // Populate form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setFormData({
+        firstName: initialData.firstName || '',
+        role: initialData.role || '',
+        companyName: initialData.companyName || '',
+        email: initialData.email || '',
+        phoneNumber: initialData.phoneNumber || '',
+        website: initialData.website || '',
+        preferredContactMethod: initialData.preferredContactMethod || '',
+        country: initialData.country || '',
+        city: initialData.city || '',
+        source: initialData.source || '',
+        status: initialData.status || '',
+        productInterest: initialData.productInterest || [],
+        numberOfEmployees: initialData.numberOfEmployees || '',
+        estimatedPotential: initialData.estimatedPotential || '',
+      });
+    } else if (isOpen && !initialData) {
+      // Reset form for create mode
+      setFormData({
+        firstName: '',
+        role: '',
+        companyName: '',
+        email: '',
+        phoneNumber: '',
+        website: '',
+        preferredContactMethod: '',
+        country: '',
+        city: '',
+        source: '',
+        status: '',
+        productInterest: [],
+        numberOfEmployees: '',
+        estimatedPotential: '',
+      });
+    }
+  }, [isOpen, initialData]);
 
   const handleChange = (field: keyof CreateLeadFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -105,7 +147,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Lead</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Lead' : 'Create New Lead'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -405,7 +447,7 @@ export default function CreateLeadModal({ isOpen, onClose, onSubmit }: CreateLea
                 }
               `}
             >
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update' : 'Save')}
             </button>
           </div>
         </form>

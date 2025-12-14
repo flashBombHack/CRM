@@ -5,18 +5,40 @@ import Sidebar from "@/components/Sidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CreateProposalModal, { CreateProposalFormData } from "@/components/CreateProposalModal";
+import ProposalActionsDropdown from "@/components/ProposalActionsDropdown";
 import { ToastContainer } from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
+import { proposalsApi, CreateProposalRequest } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 import { HiSearch, HiChevronDown, HiDotsVertical, HiPlus } from "react-icons/hi";
 
 interface Proposal {
   id: string;
-  opportunityName: string;
-  companyName: string;
-  email: string;
-  phoneNumber: string;
-  status: string;
-  lastUpdated: string; // ISO date string
+  opportunity: string | null;
+  company: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  package: string | null;
+  terms: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  price: number | null;
+  discount: number | null;
+  total: number | null;
+  cvResumeFileName: string | null;
+  cvResumeFilePath: string | null;
+  status: string | null;
+  dateCreated: string;
+  dateModified: string;
+  proposalInvoiceItems: {
+    id: string;
+    proposalId: string;
+    installment: string | null;
+    price: number;
+    dueDate: string;
+  }[];
 }
 
 interface ProposalsResponse {
@@ -41,52 +63,44 @@ export default function ProposalPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectAll, setSelectAll] = useState(false);
   const [selectedProposals, setSelectedProposals] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("All proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
+  const [editFormData, setEditFormData] = useState<CreateProposalFormData | null>(null);
+  const [deleteProposalId, setDeleteProposalId] = useState<string | null>(null);
   const { toasts, success, error, removeToast } = useToast();
 
-  // Mock data for now - replace with API call later
-  useEffect(() => {
-    setTimeout(() => {
-      const mockProposals: Proposal[] = [
-        { id: "1", opportunityName: "Lily Robinson", companyName: "Robinson Retail Group", email: "lily@robinsonretailgroup.co.uk", phoneNumber: "+44 7851 440 190", status: "Grey", lastUpdated: new Date(Date.now() - 10 * 60 * 1000).toISOString() },
-        { id: "2", opportunityName: "Benjamin Scott", companyName: "Scott Manufacturing", email: "benjamin@scottmfg.co.uk", phoneNumber: "+44 7851 440 191", status: "Sent", lastUpdated: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
-        { id: "3", opportunityName: "Charlotte Taylor", companyName: "Taylor Solutions", email: "charlotte@taylorsolutions.co.uk", phoneNumber: "+44 7851 440 192", status: "Accepted", lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "4", opportunityName: "Oliver Brown", companyName: "Brown Industries", email: "oliver@brownindustries.co.uk", phoneNumber: "+44 7851 440 193", status: "Declined", lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "5", opportunityName: "Sophia Wilson", companyName: "Wilson Tech", email: "sophia@wilsontech.co.uk", phoneNumber: "+44 7851 440 194", status: "Expired", lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "6", opportunityName: "James Anderson", companyName: "Anderson Corp", email: "james@andersoncorp.co.uk", phoneNumber: "+44 7851 440 195", status: "Sent", lastUpdated: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
-        { id: "7", opportunityName: "Emma Davis", companyName: "Davis Enterprises", email: "emma@davisenterprises.co.uk", phoneNumber: "+44 7851 440 196", status: "Grey", lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "8", opportunityName: "William Martinez", companyName: "Martinez Group", email: "william@martinezgroup.co.uk", phoneNumber: "+44 7851 440 197", status: "Accepted", lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "9", opportunityName: "Isabella Garcia", companyName: "Garcia Solutions", email: "isabella@garcia.co.uk", phoneNumber: "+44 7851 440 198", status: "Sent", lastUpdated: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-        { id: "10", opportunityName: "Michael Rodriguez", companyName: "Rodriguez Ltd", email: "michael@rodriguez.co.uk", phoneNumber: "+44 7851 440 199", status: "Grey", lastUpdated: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
-        { id: "11", opportunityName: "Amelia Lewis", companyName: "Lewis Industries", email: "amelia@lewis.co.uk", phoneNumber: "+44 7851 440 200", status: "Declined", lastUpdated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "12", opportunityName: "Henry Walker", companyName: "Walker Tech", email: "henry@walkertech.co.uk", phoneNumber: "+44 7851 440 201", status: "Expired", lastUpdated: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "13", opportunityName: "Mia Hall", companyName: "Hall Manufacturing", email: "mia@hallmfg.co.uk", phoneNumber: "+44 7851 440 202", status: "Accepted", lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "14", opportunityName: "Alexander Young", companyName: "Young Solutions", email: "alexander@young.co.uk", phoneNumber: "+44 7851 440 203", status: "Sent", lastUpdated: new Date(Date.now() - 45 * 60 * 1000).toISOString() },
-        { id: "15", opportunityName: "Harper King", companyName: "King Enterprises", email: "harper@king.co.uk", phoneNumber: "+44 7851 440 204", status: "Grey", lastUpdated: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-        { id: "16", opportunityName: "Daniel Wright", companyName: "Wright Corp", email: "daniel@wright.co.uk", phoneNumber: "+44 7851 440 205", status: "Accepted", lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "17", opportunityName: "Evelyn Lopez", companyName: "Lopez Group", email: "evelyn@lopez.co.uk", phoneNumber: "+44 7851 440 206", status: "Sent", lastUpdated: new Date(Date.now() - 20 * 60 * 1000).toISOString() },
-        { id: "18", opportunityName: "Matthew Hill", companyName: "Hill Industries", email: "matthew@hill.co.uk", phoneNumber: "+44 7851 440 207", status: "Declined", lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "19", opportunityName: "Avery Green", companyName: "Green Tech", email: "avery@green.co.uk", phoneNumber: "+44 7851 440 208", status: "Expired", lastUpdated: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "20", opportunityName: "Sofia Adams", companyName: "Adams Solutions", email: "sofia@adams.co.uk", phoneNumber: "+44 7851 440 209", status: "Grey", lastUpdated: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
-        { id: "21", opportunityName: "Joseph Baker", companyName: "Baker Ltd", email: "joseph@baker.co.uk", phoneNumber: "+44 7851 440 210", status: "Accepted", lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "22", opportunityName: "Madison Nelson", companyName: "Nelson Corp", email: "madison@nelson.co.uk", phoneNumber: "+44 7851 440 211", status: "Sent", lastUpdated: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
-        { id: "23", opportunityName: "David Carter", companyName: "Carter Enterprises", email: "david@carter.co.uk", phoneNumber: "+44 7851 440 212", status: "Grey", lastUpdated: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-        { id: "24", opportunityName: "Scarlett Mitchell", companyName: "Mitchell Group", email: "scarlett@mitchell.co.uk", phoneNumber: "+44 7851 440 213", status: "Declined", lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "25", opportunityName: "Andrew Perez", companyName: "Perez Tech", email: "andrew@perez.co.uk", phoneNumber: "+44 7851 440 214", status: "Expired", lastUpdated: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "26", opportunityName: "Victoria Roberts", companyName: "Roberts Industries", email: "victoria@roberts.co.uk", phoneNumber: "+44 7851 440 215", status: "Accepted", lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "27", opportunityName: "Joshua Turner", companyName: "Turner Solutions", email: "joshua@turner.co.uk", phoneNumber: "+44 7851 440 216", status: "Sent", lastUpdated: new Date(Date.now() - 25 * 60 * 1000).toISOString() },
-        { id: "28", opportunityName: "Grace Phillips", companyName: "Phillips Ltd", email: "grace@phillips.co.uk", phoneNumber: "+44 7851 440 217", status: "Grey", lastUpdated: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() },
-        { id: "29", opportunityName: "Ryan Campbell", companyName: "Campbell Corp", email: "ryan@campbell.co.uk", phoneNumber: "+44 7851 440 218", status: "Declined", lastUpdated: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "30", opportunityName: "Chloe Parker", companyName: "Parker Group", email: "chloe@parker.co.uk", phoneNumber: "+44 7851 440 219", status: "Expired", lastUpdated: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "31", opportunityName: "Nathan Evans", companyName: "Evans Tech", email: "nathan@evans.co.uk", phoneNumber: "+44 7851 440 220", status: "Accepted", lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "32", opportunityName: "Zoe Edwards", companyName: "Edwards Solutions", email: "zoe@edwards.co.uk", phoneNumber: "+44 7851 440 221", status: "Sent", lastUpdated: new Date(Date.now() - 35 * 60 * 1000).toISOString() },
-        { id: "33", opportunityName: "Christopher Collins", companyName: "Collins Industries", email: "christopher@collins.co.uk", phoneNumber: "+44 7851 440 222", status: "Grey", lastUpdated: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-      ];
-      setProposals(mockProposals);
-      setTotalCount(mockProposals.length);
+  const fetchProposals = async () => {
+    try {
+      setLoading(true);
+      const statusFilter = activeTab === "All proposals" ? null : activeTab;
+      const response = await proposalsApi.getProposals(pageIndex, pageSize, statusFilter);
+      if (response.isSuccess && response.data) {
+        setProposals(response.data.data);
+        setTotalCount(response.data.totalCount);
+      }
+    } catch (err) {
+      console.error("Error fetching proposals:", err);
+      error('Failed to fetch proposals');
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    fetchProposals();
+  }, [pageIndex, pageSize, activeTab]);
+
+  // Open modal when editFormData is set (for edit mode)
+  useEffect(() => {
+    if (editFormData && editingProposal && !isModalOpen) {
+      // Small delay to ensure state is fully updated
+      const timer = setTimeout(() => {
+        setIsModalOpen(true);
+      }, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [editFormData, editingProposal, isModalOpen]);
 
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
@@ -107,6 +121,7 @@ export default function ProposalPage() {
   };
 
   const formatTimeAgo = (dateString: string) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -123,6 +138,13 @@ export default function ProposalPage() {
       const days = Math.floor(diffInSeconds / 86400);
       return `${days} day${days > 1 ? 's' : ''} ago`;
     }
+  };
+
+  const getOpportunityName = (proposal: Proposal): string => {
+    if (proposal.firstName && proposal.lastName) {
+      return `${proposal.firstName} ${proposal.lastName}`;
+    }
+    return proposal.opportunity || proposal.company || '-';
   };
 
   const handleSelectAll = () => {
@@ -145,18 +167,226 @@ export default function ProposalPage() {
     setSelectAll(newSelected.size === proposals.length);
   };
 
-  const handleCreateProposal = async (formData: CreateProposalFormData) => {
+  const openEditModal = async (proposal: Proposal) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Creating proposal:', formData);
-      success('Proposal created successfully!');
-      // Refresh the proposals list
-      // await fetchProposals();
+      // Fetch full proposal data to get all fields
+      const response = await proposalsApi.getProposalById(proposal.id);
+      if (response.isSuccess && response.data) {
+        const fullProposal = response.data;
+        
+        // Convert dates from ISO to DD/MM/YYYY format
+        const formatDateForForm = (dateStr: string | null): string => {
+          if (!dateStr) return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          try {
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+          } catch {
+            return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          }
+        };
+
+        // Convert price from number to currency string
+        const formatPriceForForm = (price: number | null): string => {
+          if (price === null || price === undefined) return '£0';
+          return `£${price.toLocaleString('en-GB')}`;
+        };
+
+        // Convert discount - if it's a number, convert to percentage string
+        const formatDiscountForForm = (discount: number | null): string => {
+          if (discount === null || discount === undefined) return '';
+          // If discount is less than 1, it's likely a percentage (e.g., 5 = 5%)
+          // If discount is >= 1, it might be a percentage or absolute value
+          // Based on the API response showing 5.0, it seems to be a percentage
+          return `${discount}%`;
+        };
+
+        // Convert invoice items - format dueDate as natural language date
+        const formatDueDateForForm = (dateStr: string | null): string => {
+          if (!dateStr) return '19 December, 2025';
+          try {
+            const date = new Date(dateStr);
+            const day = date.getDate();
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day} ${month}, ${year}`;
+          } catch {
+            return '19 December, 2025';
+          }
+        };
+
+        const proposalInvoiceItems = fullProposal.proposalInvoiceItems?.map(item => {
+          const price = item.price || 0;
+          return {
+            installment: item.installment || '',
+            price: formatPriceForForm(price),
+            dueDate: formatDueDateForForm(item.dueDate),
+          };
+        }) || [
+          { installment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+          { installment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+          { installment: 'Final payment', price: '£0', dueDate: '12 January, 2026' },
+        ];
+
+        const formData: CreateProposalFormData = {
+          company: fullProposal.company || '',
+          firstName: fullProposal.firstName || '',
+          lastName: fullProposal.lastName || '',
+          email: fullProposal.email || '',
+          phoneNumber: fullProposal.phoneNumber || '',
+          package: fullProposal.package || '',
+          terms: fullProposal.terms || '',
+          startDate: formatDateForForm(fullProposal.startDate),
+          endDate: formatDateForForm(fullProposal.endDate),
+          price: formatPriceForForm(fullProposal.price),
+          discount: formatDiscountForForm(fullProposal.discount),
+          total: formatPriceForForm(fullProposal.total),
+          status: fullProposal.status || '',
+          proposalInvoiceItems: proposalInvoiceItems,
+          cvResume: null, // File can't be pre-filled
+        };
+
+        // Close modal first if open, then set edit data
+        setIsModalOpen(false);
+        setEditingProposal(proposal);
+        setEditFormData(formData);
+        // Modal will open via useEffect when editFormData is set
+      }
+    } catch (error) {
+      console.error("Error fetching proposal for edit:", error);
+      error('Failed to fetch proposal details');
+    }
+  };
+
+  const handleViewProposal = (proposal: Proposal) => {
+    router.push(`/sales/proposal/${proposal.id}`);
+  };
+
+  const handleDeleteProposal = async () => {
+    if (!deleteProposalId) return;
+
+    try {
+      const response = await proposalsApi.deleteProposal(deleteProposalId);
+      if (response.isSuccess) {
+        success('Proposal deleted successfully!');
+        await fetchProposals();
+        setDeleteProposalId(null);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to delete proposal';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message || 
-                          'Failed to create proposal. Please try again.';
+                          'Failed to delete proposal. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
+  const handleCreateProposal = async (formData: CreateProposalFormData) => {
+    try {
+      // Convert form data to API format
+      const convertDate = (dateStr: string): string | null => {
+        if (!dateStr || dateStr.trim() === '') return null;
+        // Convert DD/MM/YYYY to ISO format
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}T00:00:00.000Z`;
+        }
+        // Try parsing as natural language date (e.g., "19 December, 2025")
+        try {
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+          }
+        } catch {
+          // Fallback to null
+        }
+        return null;
+      };
+
+      const convertPrice = (priceStr: string): number | null => {
+        if (!priceStr || priceStr.trim() === '') return null;
+        const cleaned = priceStr.replace(/[£,]/g, '').trim();
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? null : parsed;
+      };
+
+      // Convert CV/Resume file to base64
+      let cvResumeFileName: string | null = null;
+      let cvResumeFilePath: string | null = null;
+
+      if (formData.cvResume) {
+        cvResumeFileName = formData.cvResume.name;
+        // For now, set filePath to fileName (backend might handle this differently)
+        // If backend requires base64, we may need to add cvResumeBase64 field to the API
+        cvResumeFilePath = cvResumeFileName;
+      }
+
+      const proposalData: CreateProposalRequest = {
+        company: formData.company || null,
+        firstName: formData.firstName || null,
+        lastName: formData.lastName || null,
+        email: formData.email || null,
+        phoneNumber: formData.phoneNumber || null,
+        package: formData.package || null,
+        terms: formData.terms || null,
+        startDate: convertDate(formData.startDate),
+        endDate: convertDate(formData.endDate),
+        price: convertPrice(formData.price),
+        discount: convertPrice(formData.discount),
+        total: convertPrice(formData.total),
+        cvResumeFileName: cvResumeFileName,
+        cvResumeFilePath: cvResumeFilePath,
+        status: formData.status || null,
+        proposalInvoiceItems: formData.proposalInvoiceItems.map(item => ({
+          installment: item.installment || '',
+          price: convertPrice(item.price) || 0,
+          dueDate: convertDate(item.dueDate) || new Date().toISOString(),
+        })),
+      };
+
+      if (editingProposal) {
+        // Update proposal
+        const response = await proposalsApi.updateProposal(editingProposal.id, proposalData);
+        if (response.isSuccess) {
+          success('Proposal updated successfully!');
+          await fetchProposals();
+          setIsModalOpen(false);
+          setEditingProposal(null);
+          setEditFormData(null);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to update proposal';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      } else {
+        // Create proposal
+        const response = await proposalsApi.createProposal(proposalData);
+        if (response.isSuccess) {
+          success('Proposal created successfully!');
+          await fetchProposals();
+          setIsModalOpen(false);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to create proposal';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to save proposal. Please try again.';
       error(errorMessage);
       throw err;
     }
@@ -166,9 +396,16 @@ export default function ProposalPage() {
     <ProtectedRoute>
       <ToastContainer toasts={toasts} onClose={removeToast} />
       <CreateProposalModal
+        key={editingProposal?.id || 'create'}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingProposal(null);
+          setEditFormData(null);
+        }}
         onSubmit={handleCreateProposal}
+        initialData={editFormData}
+        isEditMode={!!editingProposal}
       />
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
@@ -188,7 +425,11 @@ export default function ProposalPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => setIsModalOpen(true)}
+                      onClick={() => {
+                        setEditingProposal(null);
+                        setEditFormData(null);
+                        setIsModalOpen(true);
+                      }}
                       className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <HiPlus className="w-4 h-4" />
@@ -198,6 +439,26 @@ export default function ProposalPage() {
                       More <HiChevronDown className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex items-center gap-2 mb-4">
+                  {["All proposals", "Grey", "Sent", "Accepted", "Declined", "Expired"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setPageIndex(1);
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === tab
+                          ? 'bg-primary text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Filters */}
@@ -263,54 +524,80 @@ export default function ProposalPage() {
                           </td>
                         </tr>
                       ) : (
-                        proposals.map((proposal) => {
-                          const statusColors = getStatusColor(proposal.status);
-                          return (
+                        proposals
+                          .filter((proposal) => {
+                            if (!searchQuery) return true;
+                            const searchLower = searchQuery.toLowerCase();
+                            const opportunityName = getOpportunityName(proposal).toLowerCase();
+                            const company = (proposal.company || '').toLowerCase();
+                            const email = (proposal.email || '').toLowerCase();
+                            return opportunityName.includes(searchLower) || 
+                                   company.includes(searchLower) || 
+                                   email.includes(searchLower);
+                          })
+                          .map((proposal) => {
+                            const statusColors = getStatusColor(proposal.status || '');
+                            return (
                             <tr
                               key={proposal.id}
-                              className="border-b border-[#C4C7CC] hover:bg-white/50 transition-colors"
+                              className="border-b border-[#C4C7CC] hover:bg-white/50 transition-colors cursor-pointer"
+                              onClick={(e) => {
+                                // Don't trigger if clicking checkbox or actions button
+                                const target = e.target as HTMLElement;
+                                if (target.closest('input[type="checkbox"]') || target.closest('button')) {
+                                  return;
+                                }
+                                handleViewProposal(proposal);
+                              }}
                             >
-                              <td className="px-4 py-3">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedProposals.has(proposal.id)}
-                                  onChange={() => handleSelectProposal(proposal.id)}
-                                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                                />
-                              </td>
-                              <td className="px-4 py-3">
-                                <a 
-                                  href={`/sales/proposal/${proposal.id}`}
-                                  className="text-primary hover:underline text-sm font-medium"
-                                >
-                                  {proposal.opportunityName}
-                                </a>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
-                                {proposal.companyName}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
-                                <div className="flex flex-col">
-                                  <span>{proposal.email}</span>
-                                  <span>{proposal.phoneNumber}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
-                                  {proposal.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-500">
-                                {formatTimeAgo(proposal.lastUpdated)}
-                              </td>
-                              <td className="px-4 py-3">
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <HiDotsVertical className="w-5 h-5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedProposals.has(proposal.id)}
+                                    onChange={() => handleSelectProposal(proposal.id)}
+                                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <a 
+                                    href={`/sales/proposal/${proposal.id}`}
+                                    className="text-primary hover:underline text-sm font-medium"
+                                  >
+                                    {getOpportunityName(proposal)}
+                                  </a>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  {proposal.company || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700">
+                                  <div className="flex flex-col">
+                                    <span>{proposal.email || '-'}</span>
+                                    <span>{proposal.phoneNumber || '-'}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  {proposal.status ? (
+                                    <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
+                                      {proposal.status}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {formatTimeAgo(proposal.dateModified)}
+                                </td>
+                                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                  <ProposalActionsDropdown
+                                    proposalId={proposal.id}
+                                    onView={() => handleViewProposal(proposal)}
+                                    onEdit={() => openEditModal(proposal)}
+                                    onDelete={() => setDeleteProposalId(proposal.id)}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })
                       )}
                     </tbody>
                   </table>

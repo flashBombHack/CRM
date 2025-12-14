@@ -1,15 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiX, HiChevronUp, HiChevronDown } from 'react-icons/hi';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import type { Value } from 'react-phone-number-input';
 
 interface CreateProposalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateProposalFormData) => Promise<void>;
+  initialData?: CreateProposalFormData | null;
+  isEditMode?: boolean;
 }
 
 export interface CreateProposalFormData {
+  company: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
   package: string;
   terms: string;
   startDate: string;
@@ -17,13 +27,27 @@ export interface CreateProposalFormData {
   price: string;
   discount: string;
   total: string;
+  status: string;
+  proposalInvoiceItems: {
+    installment: string;
+    price: string;
+    dueDate: string;
+  }[];
+  cvResume: File | null;
 }
 
-export default function CreateProposalModal({ isOpen, onClose, onSubmit }: CreateProposalModalProps) {
+export default function CreateProposalModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateProposalModalProps) {
   const [isProposalDetailsExpanded, setIsProposalDetailsExpanded] = useState(true);
   const [isPriceDetailsExpanded, setIsPriceDetailsExpanded] = useState(true);
+  const [isInvoiceItemsExpanded, setIsInvoiceItemsExpanded] = useState(true);
+  const [isCvResumeExpanded, setIsCvResumeExpanded] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateProposalFormData>({
+    company: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
     package: '',
     terms: '',
     startDate: '01/01/2025',
@@ -31,6 +55,13 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
     price: '£0',
     discount: '',
     total: '£0',
+    status: '',
+    proposalInvoiceItems: [
+      { installment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+      { installment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+      { installment: 'Final payment', price: '£0', dueDate: '12 January, 2026' },
+    ],
+    cvResume: null,
   });
 
   const handleChange = (field: keyof CreateProposalFormData, value: string) => {
@@ -64,27 +95,96 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
     });
   };
 
+  const handleInvoiceItemChange = (index: number, field: 'installment' | 'price' | 'dueDate', value: string) => {
+    setFormData((prev) => {
+      const updatedItems = [...prev.proposalInvoiceItems];
+      updatedItems[index] = { ...updatedItems[index], [field]: value };
+      return { ...prev, proposalInvoiceItems: updatedItems };
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      // Check file size (18MB = 18 * 1024 * 1024 bytes)
+      const maxSize = 18 * 1024 * 1024; // 18MB in bytes
+      if (file.size > maxSize) {
+        alert('File size exceeds 18MB limit. Please choose a smaller file.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+    }
+    setFormData((prev) => ({ ...prev, cvResume: file }));
+  };
+
+  // Populate form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        // Set form data from initialData for edit mode
+        setFormData(initialData);
+      } else if (!isEditMode) {
+        // Reset form for create mode (only if not in edit mode)
+        setFormData({
+          company: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          phoneNumber: '',
+          package: '',
+          terms: '',
+          startDate: '01/01/2025',
+          endDate: '30/12/2025',
+          price: '£0',
+          discount: '',
+          total: '£0',
+          status: '',
+          proposalInvoiceItems: [
+            { installment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+            { installment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+            { installment: 'Final payment', price: '£0', dueDate: '12 January, 2026' },
+          ],
+          cvResume: null,
+        });
+      }
+    }
+  }, [isOpen, initialData, isEditMode]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.package.trim()) {
+    if (!formData.company.trim() || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
       return;
     }
 
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
-      // Reset form
-      setFormData({
-        package: '',
-        terms: '',
-        startDate: '01/01/2025',
-        endDate: '30/12/2025',
-        price: '£0',
-        discount: '',
-        total: '£0',
-      });
+      // Reset form only if not in edit mode
+      if (!isEditMode) {
+        setFormData({
+          company: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          phoneNumber: '',
+          package: '',
+          terms: '',
+          startDate: '01/01/2025',
+          endDate: '30/12/2025',
+          price: '£0',
+          discount: '',
+          total: '£0',
+          status: '',
+          proposalInvoiceItems: [
+            { installment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+            { installment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+            { installment: 'Final payment', price: '£0', dueDate: '12 January, 2026' },
+          ],
+          cvResume: null,
+        });
+      }
       onClose();
     } catch (error) {
       // Error handling is done in parent component
@@ -95,14 +195,14 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
 
   if (!isOpen) return null;
 
-  const isFormValid = formData.package.trim();
+  const isFormValid = formData.company.trim() && formData.firstName.trim() && formData.lastName.trim() && formData.email.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Proposal</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Proposal' : 'Create New Proposal'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -134,7 +234,68 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
               {isProposalDetailsExpanded && (
                 <div className="p-4 bg-white space-y-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Select Pacakage</label>
+                    <label className="block text-xs text-gray-500 mb-1">Company</label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => handleChange('company', e.target.value)}
+                      placeholder="Enter company name"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={formData.firstName}
+                        onChange={(e) => handleChange('firstName', e.target.value)}
+                        placeholder="Enter first name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={formData.lastName}
+                        onChange={(e) => handleChange('lastName', e.target.value)}
+                        placeholder="Enter last name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      placeholder="Enter email"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <div className="phone-input-container">
+                      <PhoneInput
+                        international
+                        defaultCountry="US"
+                        value={formData.phoneNumber as Value}
+                        onChange={(value) => handleChange('phoneNumber', value || '')}
+                        placeholder="Enter phone number"
+                        className="phone-input-wrapper"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Select Package</label>
                     <div className="relative">
                       <select
                         value={formData.package}
@@ -199,6 +360,25 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
                       <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Status</label>
+                    <div className="relative">
+                      <select
+                        value={formData.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10 text-sm"
+                      >
+                        <option value="">Select an option</option>
+                        <option value="Grey">Grey</option>
+                        <option value="Sent">Sent</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Declined">Declined</option>
+                        <option value="Expired">Expired</option>
+                      </select>
+                      <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -268,6 +448,101 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
                 </div>
               )}
             </div>
+
+            {/* Invoice Items Section */}
+            <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E1E3E6' }}>
+              {/* Header */}
+              <button
+                type="button"
+                onClick={() => setIsInvoiceItemsExpanded(!isInvoiceItemsExpanded)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left rounded-t-lg"
+                style={{ backgroundColor: '#F7F8F8', borderBottom: '1px solid #E1E3E6' }}
+              >
+                <h3 className="text-lg font-medium text-gray-900">Invoice Items</h3>
+                {isInvoiceItemsExpanded ? (
+                  <HiChevronUp className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <HiChevronDown className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+
+              {isInvoiceItemsExpanded && (
+                <div className="p-4 bg-white">
+                  <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: '#F7F8F8', borderColor: '#E1E3E6' }}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: '#E1E3E6' }}>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Installment</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Price</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Due date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.proposalInvoiceItems.map((item, index) => (
+                          <tr key={index} className="border-b last:border-b-0" style={{ borderColor: '#E1E3E6' }}>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={item.installment}
+                                onChange={(e) => handleInvoiceItemChange(index, 'installment', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={item.price}
+                                onChange={(e) => handleInvoiceItemChange(index, 'price', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={item.dueDate}
+                                onChange={(e) => handleInvoiceItemChange(index, 'dueDate', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cv / Resume Section */}
+            <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E1E3E6' }}>
+              <div className="px-4 py-3" style={{ backgroundColor: '#F7F8F8', borderBottom: '1px solid #E1E3E6' }}>
+                <h3 className="text-lg font-medium text-gray-900">Cv / Resume</h3>
+              </div>
+              <div className="p-4 bg-white">
+                <label className="block">
+                  <div className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-blue-50 transition-colors" style={{ borderColor: '#93C5FD', backgroundColor: '#EFF6FF' }}>
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-sm text-gray-600">
+                        Upload CSV / PNG / JPEG file here. or click to browse
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Max file size: 18 mb</p>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv,.png,.jpeg,.jpg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                {formData.cvResume && (
+                  <p className="mt-2 text-sm text-gray-600">{formData.cvResume.name}</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Footer */}
@@ -290,7 +565,7 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit }: Creat
                 }
               `}
             >
-              {isSubmitting ? 'Creating...' : 'Create'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update' : 'Create')}
             </button>
           </div>
         </form>

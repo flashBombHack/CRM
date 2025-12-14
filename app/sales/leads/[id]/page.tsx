@@ -5,9 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { leadsApi } from "@/lib/api-client";
+import { leadsApi, CreateLeadRequest } from "@/lib/api-client";
 import { HiPlus, HiChevronDown, HiCheck, HiPencil, HiDocument, HiPhone } from "react-icons/hi";
 import ConvertLeadModal, { ConvertLeadFormData } from "@/components/ConvertLeadModal";
+import CreateLeadModal, { CreateLeadFormData } from "@/components/CreateLeadModal";
+import { ToastContainer } from "@/components/Toast";
+import { useToast } from "@/hooks/useToast";
 
 interface LeadDetail {
   id: string;
@@ -22,6 +25,8 @@ interface LeadDetail {
   city: string | null;
   source: string | null;
   status: string | null;
+  noOfEmployees: string | null;
+  estimatedPotential: number | null;
   productInterest: string[];
 }
 
@@ -47,26 +52,89 @@ export default function LeadDetailPage() {
   const [isActivityTimelineExpanded, setIsActivityTimelineExpanded] = useState(true);
   const [isLeadQualificationExpanded, setIsLeadQualificationExpanded] = useState(true);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { toasts, success, error, removeToast } = useToast();
+
+  const fetchLead = async () => {
+    try {
+      setLoading(true);
+      const response: LeadDetailResponse = await leadsApi.getLeadById(params.id as string);
+      if (response.isSuccess && response.data) {
+        setLead(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchLead = async () => {
-      try {
-        setLoading(true);
-        const response: LeadDetailResponse = await leadsApi.getLeadById(params.id as string);
-        if (response.isSuccess && response.data) {
-          setLead(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching lead:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (params.id) {
       fetchLead();
     }
   }, [params.id]);
+
+  const prepareLeadData = (formData: CreateLeadFormData): CreateLeadRequest => {
+    const phoneNumber = formData.phoneNumber && formData.phoneNumber.trim() 
+      ? formData.phoneNumber.trim() 
+      : null;
+
+    let estimatedPotential: number | null = null;
+    if (formData.estimatedPotential && formData.estimatedPotential.trim()) {
+      const cleanedValue = formData.estimatedPotential
+        .replace(/[£$€,]/g, '')
+        .trim();
+      const parsed = parseFloat(cleanedValue);
+      if (!isNaN(parsed)) {
+        estimatedPotential = parsed;
+      }
+    }
+
+    return {
+      firstName: formData.firstName,
+      role: formData.role || null,
+      companyName: formData.companyName,
+      email: formData.email,
+      phoneNumber: phoneNumber,
+      website: formData.website || null,
+      preferredContactMethod: formData.preferredContactMethod || null,
+      country: formData.country || null,
+      city: formData.city || null,
+      source: formData.source || null,
+      status: formData.status || null,
+      noOfEmployees: formData.numberOfEmployees || null,
+      estimatedPotential: estimatedPotential,
+      productInterest: formData.productInterest || [],
+    };
+  };
+
+  const handleEditLead = async (formData: CreateLeadFormData) => {
+    if (!lead) return;
+    
+    try {
+      const leadData = prepareLeadData(formData);
+      const response = await leadsApi.updateLead(lead.id, leadData);
+
+      if (response.isSuccess) {
+        success('Lead updated successfully!');
+        await fetchLead();
+        setIsEditModalOpen(false);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to update lead';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to update lead. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
 
   const getStatusIndex = (status: string | null) => {
     if (!status) return 0;
@@ -76,7 +144,14 @@ export default function LeadDetailPage() {
   };
 
   const currentStatusIndex = getStatusIndex(lead?.status || null);
-  const estimatedPotential = "£8,000–£15,000"; // Demo data
+  
+  // Format estimatedPotential from API (number) to display format
+  const formatEstimatedPotential = (value: number | null): string => {
+    if (value === null || value === undefined) return "£8,000–£15,000"; // Demo data fallback
+    return `£${value.toLocaleString('en-GB')}`;
+  };
+  
+  const estimatedPotential = lead ? formatEstimatedPotential(lead.estimatedPotential) : "£8,000–£15,000";
 
   if (loading) {
     return (
@@ -188,7 +263,10 @@ export default function LeadDetailPage() {
                               >
                                 Convert to opportunity
                               </button>
-                              <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 bg-transparent border-r border-black hover:bg-primary hover:text-white transition-colors flex-1 sm:flex-none whitespace-nowrap">
+                              <button 
+                                onClick={() => setIsEditModalOpen(true)}
+                                className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 bg-transparent border-r border-black hover:bg-primary hover:text-white transition-colors flex-1 sm:flex-none whitespace-nowrap"
+                              >
                                 Edit
                               </button>
                               <button className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 bg-transparent border-r border-black hover:bg-primary hover:text-white transition-colors flex-1 sm:flex-none whitespace-nowrap">
@@ -428,7 +506,7 @@ export default function LeadDetailPage() {
                           <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                               <span className="text-xs sm:text-sm text-gray-500">Lead Source</span>
-                              <span className="text-xs sm:text-sm text-gray-900 font-medium text-right sm:text-left">Website Enquiry</span>
+                              <span className="text-xs sm:text-sm text-gray-900 font-medium text-right sm:text-left">{lead.source || "Website Enquiry"}</span>
                             </div>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                               <span className="text-xs sm:text-sm text-gray-500">Captured Date</span>
@@ -445,15 +523,29 @@ export default function LeadDetailPage() {
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                               <span className="text-xs sm:text-sm text-gray-500">Product Interest</span>
                               <div className="flex flex-wrap gap-2 justify-end sm:justify-start">
-                                <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
-                                  Hospitality packages
-                                </span>
-                                <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
-                                  Box / Lounge
-                                </span>
-                                <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
-                                  Sponsorship Asset
-                                </span>
+                                {lead.productInterest && lead.productInterest.length > 0 ? (
+                                  lead.productInterest.map((interest, index) => (
+                                    <span 
+                                      key={index}
+                                      className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" 
+                                      style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}
+                                    >
+                                      {interest}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <>
+                                    <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
+                                      Hospitality packages
+                                    </span>
+                                    <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
+                                      Box / Lounge
+                                    </span>
+                                    <span className="px-3 py-1 text-xs sm:text-sm text-gray-900 font-medium rounded border" style={{ backgroundColor: '#FFF8FA', borderColor: '#FFE4EA' }}>
+                                      Sponsorship Asset
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                             <div className="mt-4 p-3 sm:p-4 rounded-lg border flex items-start gap-3" style={{ backgroundColor: '#F2F8FC', borderColor: '#CCE3F5' }}>
@@ -634,6 +726,33 @@ export default function LeadDetailPage() {
           companyName: lead?.companyName || null,
         }}
       />
+
+      {/* Edit Lead Modal */}
+      {lead && (
+        <CreateLeadModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleEditLead}
+          initialData={{
+            firstName: lead.firstName || '',
+            role: lead.role || '',
+            companyName: lead.companyName || '',
+            email: lead.email || '',
+            phoneNumber: lead.phoneNumber || '',
+            website: lead.website || '',
+            preferredContactMethod: lead.preferredContactMethod || '',
+            country: lead.country || '',
+            city: lead.city || '',
+            source: lead.source || '',
+            status: lead.status || '',
+            productInterest: lead.productInterest || [],
+            numberOfEmployees: lead.noOfEmployees || '',
+            estimatedPotential: lead.estimatedPotential ? `£${lead.estimatedPotential.toLocaleString('en-GB')}` : '',
+          }}
+          isEditMode={true}
+        />
+      )}
+
     </ProtectedRoute>
   );
 }

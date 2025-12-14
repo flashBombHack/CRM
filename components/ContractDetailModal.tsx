@@ -5,26 +5,30 @@ import { HiX, HiDotsVertical } from 'react-icons/hi';
 
 interface ContractDetail {
   id: string;
-  contractId: string;
-  opportunityName: string;
-  companyName: string;
-  email: string;
-  phoneNumber: string;
-  status: string;
-  totalAmount: string;
-  balanceDue: string;
-  dueDate: string;
-  season: string;
-  contractValue: string;
-  contractStart: string;
-  contractEnd: string;
-  invoiceItems: {
-    instalment: string;
-    price: string;
+  contID?: string;
+  name: string | null;
+  companyName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  status: string | null;
+  details: string | null;
+  season: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  totalAgreedPrice: number | null;
+  discount: string | null;
+  finalPrice: number | null;
+  cvResumeBase64: string | null;
+  cvResumeFileName: string | null;
+  contractInvoiceItems: {
+    id: string;
+    contractId: string;
+    installment: string | null;
+    price: number;
     dueDate: string;
   }[];
-  termsStatus: string;
-  documents: string[];
+  dateCreated: string;
+  dateModified: string;
 }
 
 interface ContractDetailModalProps {
@@ -48,7 +52,23 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
 
   if (!isOpen || !contract) return null;
 
-  const getStatusColor = (status: string) => {
+  const formatDate = (dateStr: string | null): string => {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatPrice = (price: number | null): string => {
+    if (price === null || price === undefined) return '-';
+    return `£${price.toLocaleString('en-GB')}`;
+  };
+
+  const getStatusColor = (status: string | null) => {
+    if (!status) return { bg: "bg-gray-200", text: "text-gray-700" };
     const statusLower = status.toLowerCase();
     switch (statusLower) {
       case "grey":
@@ -71,6 +91,7 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
   };
 
   const statusColors = getStatusColor(contract.status);
+  const contractId = contract.contID || (contract.id ? `CT-${contract.id.substring(0, 8)}` : 'N/A');
 
   return (
     <>
@@ -84,7 +105,7 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
       <div className="fixed right-0 top-0 h-screen w-full max-w-xl bg-white shadow-2xl z-[60] overflow-y-auto animate-slide-in">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-xl font-semibold text-gray-900">{contract.contractId}</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{contractId}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1"
@@ -98,7 +119,7 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
           {/* Contract Overview */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">{contract.contractId}</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{contractId}</h3>
               <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                 <HiDotsVertical className="w-5 h-5" />
               </button>
@@ -107,21 +128,25 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Status</p>
-                <span className={`inline-block px-3 py-1 ${statusColors.bg} ${statusColors.text} text-sm font-medium rounded`}>
-                  {contract.status}
-                </span>
+                {contract.status ? (
+                  <span className={`inline-block px-3 py-1 ${statusColors.bg} ${statusColors.text} text-sm font-medium rounded`}>
+                    {contract.status}
+                  </span>
+                ) : (
+                  <p className="text-sm font-medium text-gray-400">-</p>
+                )}
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                <p className="text-sm font-medium text-gray-900">{contract.totalAmount}</p>
+                <p className="text-xs text-gray-500 mb-1">Total Agreed Price</p>
+                <p className="text-sm font-medium text-gray-900">{formatPrice(contract.totalAgreedPrice)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">Balance Due</p>
-                <p className="text-sm font-medium text-gray-900">{contract.balanceDue}</p>
+                <p className="text-xs text-gray-500 mb-1">Discount</p>
+                <p className="text-sm font-medium text-gray-900">{formatPrice(contract.discount)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">Due Date</p>
-                <p className="text-sm font-medium text-gray-900">{contract.dueDate}</p>
+                <p className="text-xs text-gray-500 mb-1">Final Price</p>
+                <p className="text-sm font-medium text-gray-900">{formatPrice(contract.finalPrice)}</p>
               </div>
             </div>
           </div>
@@ -132,19 +157,19 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Name</p>
-                <p className="text-sm font-medium text-gray-900">{contract.opportunityName}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.name || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Company</p>
-                <p className="text-sm font-medium text-gray-900">{contract.companyName}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.companyName || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Email</p>
-                <p className="text-sm font-medium text-gray-900">{contract.email}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.email || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Phone</p>
-                <p className="text-sm font-medium text-gray-900">{contract.phoneNumber}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.phoneNumber || '-'}</p>
               </div>
             </div>
           </div>
@@ -155,19 +180,23 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Season</p>
-                <p className="text-sm font-medium text-gray-900">{contract.season}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Contract Value</p>
-                <p className="text-sm font-medium text-gray-900">{contract.contractValue}</p>
+                <p className="text-sm font-medium text-gray-900">{contract.season || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Contract Start</p>
-                <p className="text-sm font-medium text-gray-900">{contract.contractStart}</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(contract.startDate)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Contract End</p>
-                <p className="text-sm font-medium text-gray-900">{contract.contractEnd}</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(contract.endDate)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Date Created</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(contract.dateCreated)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Last Modified</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(contract.dateModified)}</p>
               </div>
             </div>
           </div>
@@ -175,53 +204,46 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
           {/* Invoice Items */}
           <div className="pt-6 border-t border-gray-200">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">INVOICE ITEMS</h4>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Instalment</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Due Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contract.invoiceItems.map((item, index) => (
-                    <tr key={index} className="border-b border-gray-200 last:border-b-0">
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.instalment}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.price}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.dueDate}</td>
+            {contract.contractInvoiceItems && contract.contractInvoiceItems.length > 0 ? (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Instalment</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Price</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Due Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Terms & Conditions */}
-          <div className="pt-6 border-t border-gray-200">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">TERMS & CONDITIONS</h4>
-            <span className="inline-block px-3 py-1 bg-green-100 text-green-700 border border-green-300 text-sm font-medium rounded">
-              {contract.termsStatus}
-            </span>
+                  </thead>
+                  <tbody>
+                    {contract.contractInvoiceItems.map((item, index) => (
+                      <tr key={item.id || index} className="border-b border-gray-200 last:border-b-0">
+                        <td className="px-4 py-3 text-sm text-gray-900">{item.installment || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{formatPrice(item.price)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{formatDate(item.dueDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No invoice items</p>
+            )}
           </div>
 
           {/* Documents */}
-          <div className="pt-6 border-t border-gray-200 pb-6">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">DOCUMENTS</h4>
-            <div className="space-y-2">
-              {contract.documents.map((doc, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                >
+          {contract.cvResumeFileName && (
+            <div className="pt-6 border-t border-gray-200 pb-6">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">DOCUMENTS</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
                   <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="text-sm text-gray-900">{doc}</span>
+                  <span className="text-sm text-gray-900">{contract.cvResumeFileName}</span>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </>

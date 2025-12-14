@@ -1,25 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiX, HiChevronUp, HiChevronDown, HiPlus } from 'react-icons/hi';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import type { Value } from 'react-phone-number-input';
+import { contractsApi } from '@/lib/api-client';
 
 interface CreateInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateInvoiceFormData) => Promise<void>;
+  initialData?: CreateInvoiceFormData | null;
+  isEditMode?: boolean;
 }
 
 export interface CreateInvoiceFormData {
   companyName: string;
   primaryName: string;
   email: string;
-  phoneCode: string;
   phoneNumber: string;
   billingAddress: string;
   packageSold: string;
   contractValue: string;
   startDate: string;
   endDate: string;
+  status: string;
+  invoiceNotes: string;
+  billedOnDate: string;
+  dueDate: string;
+  contractId: string;
   invoiceItems: {
     item: string;
     qty: string;
@@ -28,24 +38,36 @@ export interface CreateInvoiceFormData {
   }[];
 }
 
-export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: CreateInvoiceModalProps) {
+interface Contract {
+  id: string;
+  contID?: string;
+  status: string | null;
+}
+
+export default function CreateInvoiceModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateInvoiceModalProps) {
   const [isCustomerInfoExpanded, setIsCustomerInfoExpanded] = useState(true);
   const [isRelatedContactExpanded, setIsRelatedContactExpanded] = useState(true);
   const [isInvoiceItemsExpanded, setIsInvoiceItemsExpanded] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newItem, setNewItem] = useState({ item: '', qty: '', price: '' });
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   
   const [formData, setFormData] = useState<CreateInvoiceFormData>({
     companyName: '',
     primaryName: '',
     email: '',
-    phoneCode: '+1',
     phoneNumber: '',
     billingAddress: '',
     packageSold: '',
     contractValue: '£0,000',
     startDate: '01/01/2025',
     endDate: '30/12/2025',
+    status: '',
+    invoiceNotes: '',
+    billedOnDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    dueDate: '30/12/2025',
+    contractId: '',
     invoiceItems: [],
   });
 
@@ -53,9 +75,55 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePhoneCodeChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, phoneCode: value }));
+  const fetchContracts = async () => {
+    try {
+      setLoadingContracts(true);
+      // Fetch all contracts without status filter
+      const response = await contractsApi.getContracts(1, 100, null);
+      if (response.isSuccess && response.data) {
+        setContracts(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching contracts:', error);
+      setContracts([]);
+    } finally {
+      setLoadingContracts(false);
+    }
   };
+
+  // Populate form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setFormData(initialData);
+    } else if (isOpen && !initialData) {
+      // Reset form for create mode
+      setFormData({
+        companyName: '',
+        primaryName: '',
+        email: '',
+        phoneNumber: '',
+        billingAddress: '',
+        packageSold: '',
+        contractValue: '£0,000',
+        startDate: '01/01/2025',
+        endDate: '30/12/2025',
+        status: '',
+        invoiceNotes: '',
+        billedOnDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        dueDate: '30/12/2025',
+        contractId: '',
+        invoiceItems: [],
+      });
+      setNewItem({ item: '', qty: '', price: '' });
+    }
+  }, [isOpen, initialData]);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Fetch all contracts when modal opens
+      fetchContracts();
+    }
+  }, [isOpen]);
 
   const handleAddItem = () => {
     if (!newItem.item || !newItem.qty || !newItem.price) return;
@@ -106,13 +174,17 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
         companyName: '',
         primaryName: '',
         email: '',
-        phoneCode: '+1',
         phoneNumber: '',
         billingAddress: '',
         packageSold: '',
         contractValue: '£0,000',
         startDate: '01/01/2025',
         endDate: '30/12/2025',
+        status: '',
+        invoiceNotes: '',
+        billedOnDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        dueDate: '30/12/2025',
+        contractId: '',
         invoiceItems: [],
       });
       setNewItem({ item: '', qty: '', price: '' });
@@ -133,7 +205,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Invoice</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Invoice' : 'Create New Invoice'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -198,29 +270,17 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Phone Number</label>
-                    <div className="flex gap-0">
-                      <div className="relative flex-shrink-0">
-                        <select
-                          value={formData.phoneCode}
-                          onChange={(e) => handlePhoneCodeChange(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-l-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm appearance-none pr-8 border-r-0"
-                        >
-                          <option value="+1">+1</option>
-                          <option value="+44">+44</option>
-                          <option value="+33">+33</option>
-                          <option value="+49">+49</option>
-                          <option value="+61">+61</option>
-                          <option value="+86">+86</option>
-                        </select>
-                        <HiChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                      </div>
-                      <input
-                        type="text"
-                        value={formData.phoneNumber}
-                        onChange={(e) => handleChange('phoneNumber', e.target.value)}
-                        placeholder="012 345 6789"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <div className="phone-input-container">
+                      <PhoneInput
+                        international
+                        defaultCountry="US"
+                        value={formData.phoneNumber as Value}
+                        onChange={(value) => handleChange('phoneNumber', value || '')}
+                        placeholder="Enter phone number"
+                        className="phone-input-wrapper"
                       />
                     </div>
                   </div>
@@ -259,6 +319,45 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
               {isRelatedContactExpanded && (
                 <div className="p-4 bg-white space-y-4">
                   <div>
+                    <label className="block text-xs text-gray-500 mb-1">Status</label>
+                    <div className="relative">
+                      <select
+                        value={formData.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm appearance-none pr-8"
+                      >
+                        <option value="">Select an option</option>
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="paid">Paid</option>
+                        <option value="partially paid">Partially Paid</option>
+                        <option value="overdue">Overdue</option>
+                      </select>
+                      <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Contract ID</label>
+                    <div className="relative">
+                      <select
+                        value={formData.contractId}
+                        onChange={(e) => handleChange('contractId', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm appearance-none pr-8"
+                        disabled={loadingContracts}
+                      >
+                        <option value="">Select a contract</option>
+                        {contracts.map((contract) => (
+                          <option key={contract.id} value={contract.contID || contract.id}>
+                            {contract.contID || `CT-${contract.id.substring(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
                     <label className="block text-xs text-gray-500 mb-1">Package sold</label>
                     <div className="relative">
                       <select
@@ -289,7 +388,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                      <label className="block text-xs text-gray-500 mb-1">Contract Start Date</label>
                       <div className="relative">
                         <input
                           type="text"
@@ -304,7 +403,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">End Date</label>
+                      <label className="block text-xs text-gray-500 mb-1">Contract End Date</label>
                       <div className="relative">
                         <input
                           type="text"
@@ -318,6 +417,50 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
                         </svg>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Billed On Date</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.billedOnDate}
+                          onChange={(e) => handleChange('billedOnDate', e.target.value)}
+                          placeholder="DD/MM/YYYY"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-10"
+                        />
+                        <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Due Date</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.dueDate}
+                          onChange={(e) => handleChange('dueDate', e.target.value)}
+                          placeholder="DD/MM/YYYY"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-10"
+                        />
+                        <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Invoice Notes</label>
+                    <textarea
+                      value={formData.invoiceNotes}
+                      onChange={(e) => handleChange('invoiceNotes', e.target.value)}
+                      placeholder="Enter invoice notes (optional)"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm resize-none"
+                    />
                   </div>
                 </div>
               )}
@@ -467,7 +610,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, onSubmit }: Create
                 }
               `}
             >
-              {isSubmitting ? 'Creating...' : 'Create'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update' : 'Create')}
             </button>
           </div>
         </form>

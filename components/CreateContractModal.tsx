@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiX, HiChevronUp, HiChevronDown } from 'react-icons/hi';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
+import type { Value } from 'react-phone-number-input';
 
 interface CreateContractModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateContractFormData) => Promise<void>;
+  initialData?: CreateContractFormData | null;
+  isEditMode?: boolean;
 }
 
 export interface CreateContractFormData {
@@ -29,7 +34,7 @@ export interface CreateContractFormData {
   cvResume: File | null;
 }
 
-export default function CreateContractModal({ isOpen, onClose, onSubmit }: CreateContractModalProps) {
+export default function CreateContractModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateContractModalProps) {
   const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(true);
   const [isContractDetailsExpanded, setIsContractDetailsExpanded] = useState(true);
   const [isPricingExpanded, setIsPricingExpanded] = useState(true);
@@ -41,6 +46,7 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
     email: '',
     phoneNumber: '',
     contractDetails: '',
+    status: '',
     season: '',
     startDate: '01/01/2025',
     endDate: '30/12/2025',
@@ -54,6 +60,54 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
     ],
     cvResume: null,
   });
+
+  // Populate form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setFormData({
+        name: initialData.name || '',
+        companyName: initialData.companyName || '',
+        email: initialData.email || '',
+        phoneNumber: initialData.phoneNumber || '',
+        contractDetails: initialData.contractDetails || '',
+        status: initialData.status || '',
+        season: initialData.season || '',
+        startDate: initialData.startDate || '01/01/2025',
+        endDate: initialData.endDate || '30/12/2025',
+        totalAgreedPrice: initialData.totalAgreedPrice || '£0,000',
+        discount: initialData.discount || '',
+        finalPrice: initialData.finalPrice || '£0,000',
+        invoiceItems: initialData.invoiceItems || [
+          { instalment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+          { instalment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+          { instalment: 'Final payment', price: '£0', dueDate: '12 January,,2026' },
+        ],
+        cvResume: initialData.cvResume || null,
+      });
+    } else if (isOpen && !initialData) {
+      // Reset form for create mode
+      setFormData({
+        name: '',
+        companyName: '',
+        email: '',
+        phoneNumber: '',
+        contractDetails: '',
+        status: '',
+        season: '',
+        startDate: '01/01/2025',
+        endDate: '30/12/2025',
+        totalAgreedPrice: '£0,000',
+        discount: '',
+        finalPrice: '£0,000',
+        invoiceItems: [
+          { instalment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+          { instalment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+          { instalment: 'Final payment', price: '£0', dueDate: '12 January,,2026' },
+        ],
+        cvResume: null,
+      });
+    }
+  }, [isOpen, initialData]);
 
   const handleChange = (field: keyof CreateContractFormData, value: string | File | null) => {
     setFormData((prev) => {
@@ -97,6 +151,15 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file) {
+      // Check file size (2MB = 2 * 1024 * 1024 bytes)
+      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        alert('File size exceeds 2MB limit. Please choose a smaller file.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+    }
     setFormData((prev) => ({ ...prev, cvResume: file }));
   };
 
@@ -148,7 +211,7 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Contract</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{isEditMode ? 'Edit Contract' : 'Create New Contract'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -213,23 +276,17 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Phone Number</label>
-                    <div className="flex gap-0">
-                      <div className="relative flex-shrink-0">
-                        <select className="px-3 py-2 border border-gray-300 rounded-l-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm appearance-none pr-8 border-r-0">
-                          <option value="+1">+1</option>
-                          <option value="+44">+44</option>
-                          <option value="+33">+33</option>
-                          <option value="+49">+49</option>
-                        </select>
-                        <HiChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                      </div>
-                      <input
-                        type="text"
-                        value={formData.phoneNumber}
-                        onChange={(e) => handleChange('phoneNumber', e.target.value)}
-                        placeholder="012 345 6789"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <div className="phone-input-container">
+                      <PhoneInput
+                        international
+                        defaultCountry="US"
+                        value={formData.phoneNumber as Value}
+                        onChange={(value) => handleChange('phoneNumber', value || '')}
+                        placeholder="Enter phone number"
+                        className="phone-input-wrapper"
                       />
                     </div>
                   </div>
@@ -265,6 +322,27 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
                       placeholder="<Company> — <Season> Contract"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Status</label>
+                    <div className="relative">
+                      <select
+                        value={formData.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10 text-sm"
+                      >
+                        <option value="">Select an option</option>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="sent">Sent</option>
+                        <option value="signed">Signed</option>
+                        <option value="draft">Draft</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="expired">Expired</option>
+                      </select>
+                      <HiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
                   </div>
 
                   <div>
@@ -498,7 +576,7 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit }: Creat
                 }
               `}
             >
-              {isSubmitting ? 'Creating...' : 'Create'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update' : 'Create')}
             </button>
           </div>
         </form>

@@ -6,18 +6,21 @@ import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ContractDetailModal from "@/components/ContractDetailModal";
 import CreateContractModal, { CreateContractFormData } from "@/components/CreateContractModal";
+import ContractActionsDropdown from "@/components/ContractActionsDropdown";
 import { ToastContainer } from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
-import { HiSearch, HiChevronDown, HiDotsVertical, HiPlus } from "react-icons/hi";
+import { contractsApi, CreateContractRequest } from "@/lib/api-client";
+import { HiSearch, HiChevronDown, HiPlus } from "react-icons/hi";
 
 interface Contract {
   id: string;
-  opportunityName: string;
-  companyName: string;
-  email: string;
-  phoneNumber: string;
-  status: string;
-  lastUpdated: string; // ISO date string
+  contID?: string;
+  name: string | null;
+  companyName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  status: string | null;
+  dateModified: string | null;
 }
 
 interface ContractsResponse {
@@ -48,38 +51,31 @@ export default function ContractsPage() {
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [editFormData, setEditFormData] = useState<CreateContractFormData | null>(null);
+  const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const { toasts, success, error, removeToast } = useToast();
 
-  // Mock data for now - replace with API call later
-  useEffect(() => {
-    setTimeout(() => {
-      const mockContracts: Contract[] = [
-        { id: "1", opportunityName: "Lily Robinson", companyName: "Robinson Retail Group", email: "lily@robinsonretailgroup.co.uk", phoneNumber: "+44 7851 440 190", status: "Grey", lastUpdated: new Date(Date.now() - 10 * 60 * 1000).toISOString() },
-        { id: "2", opportunityName: "Benjamin Scott", companyName: "Scott Technical Services", email: "benjamin@scotttech.co.uk", phoneNumber: "+44 7851 440 191", status: "Sent", lastUpdated: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
-        { id: "3", opportunityName: "Mia Phillips", companyName: "Phillips Recruitment UK", email: "mia@phillipsrecruitment.co.uk", phoneNumber: "+44 7851 440 192", status: "Signed", lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "4", opportunityName: "Lucas Hall", companyName: "Hall Security Systems", email: "lucas@hallsecurity.co.uk", phoneNumber: "+44 7851 440 193", status: "Pending", lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "5", opportunityName: "Grace Foster", companyName: "Foster Media Agency", email: "grace@fostermedia.co.uk", phoneNumber: "+44 7851 440 194", status: "Draft", lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "6", opportunityName: "Alfie Turner", companyName: "Turner Mechanical Ltd", email: "alfie@turnermechanical.co.uk", phoneNumber: "+44 7851 440 195", status: "Cancelled", lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "7", opportunityName: "Charlotte Taylor", companyName: "Taylor Solutions", email: "charlotte@taylorsolutions.co.uk", phoneNumber: "+44 7851 440 196", status: "Expired", lastUpdated: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "8", opportunityName: "Oliver Brown", companyName: "Brown Industries", email: "oliver@brownindustries.co.uk", phoneNumber: "+44 7851 440 197", status: "Sent", lastUpdated: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
-        { id: "9", opportunityName: "Sophia Wilson", companyName: "Wilson Tech", email: "sophia@wilsontech.co.uk", phoneNumber: "+44 7851 440 198", status: "Signed", lastUpdated: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "10", opportunityName: "James Anderson", companyName: "Anderson Corp", email: "james@andersoncorp.co.uk", phoneNumber: "+44 7851 440 199", status: "Pending", lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "11", opportunityName: "Emma Davis", companyName: "Davis Enterprises", email: "emma@davisenterprises.co.uk", phoneNumber: "+44 7851 440 200", status: "Draft", lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "12", opportunityName: "William Martinez", companyName: "Martinez Group", email: "william@martinezgroup.co.uk", phoneNumber: "+44 7851 440 201", status: "Grey", lastUpdated: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString() },
-        { id: "13", opportunityName: "Isabella Garcia", companyName: "Garcia Solutions", email: "isabella@garcia.co.uk", phoneNumber: "+44 7851 440 202", status: "Sent", lastUpdated: new Date(Date.now() - 45 * 60 * 1000).toISOString() },
-        { id: "14", opportunityName: "Michael Rodriguez", companyName: "Rodriguez Ltd", email: "michael@rodriguez.co.uk", phoneNumber: "+44 7851 440 203", status: "Signed", lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "15", opportunityName: "Amelia Lewis", companyName: "Lewis Industries", email: "amelia@lewis.co.uk", phoneNumber: "+44 7851 440 204", status: "Pending", lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "16", opportunityName: "Henry Walker", companyName: "Walker Tech", email: "henry@walkertech.co.uk", phoneNumber: "+44 7851 440 205", status: "Draft", lastUpdated: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "17", opportunityName: "Noah Gray", companyName: "Gray Corp", email: "noah@graycorp.co.uk", phoneNumber: "+44 7851 440 206", status: "Cancelled", lastUpdated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "18", opportunityName: "Ava White", companyName: "White Solutions", email: "ava@whitesolutions.co.uk", phoneNumber: "+44 7851 440 207", status: "Expired", lastUpdated: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() },
-        { id: "19", opportunityName: "Ethan Black", companyName: "Black Industries", email: "ethan@blackindustries.co.uk", phoneNumber: "+44 7851 440 208", status: "Grey", lastUpdated: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-        { id: "20", opportunityName: "Olivia Green", companyName: "Green Tech", email: "olivia@greentech.co.uk", phoneNumber: "+44 7851 440 209", status: "Sent", lastUpdated: new Date(Date.now() - 20 * 60 * 1000).toISOString() },
-      ];
-      setContracts(mockContracts);
-      setTotalCount(mockContracts.length);
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      const statusFilter = activeTab === "All contracts" ? null : activeTab;
+      const response = await contractsApi.getContracts(pageIndex, pageSize, statusFilter);
+      if (response.isSuccess && response.data) {
+        setContracts(response.data.data);
+        setTotalCount(response.data.totalCount);
+      }
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      error('Failed to fetch contracts');
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    fetchContracts();
+  }, [pageIndex, pageSize, activeTab]);
 
   const getStatusColor = (status: string) => {
     const statusLower = status.toLowerCase();
@@ -103,7 +99,8 @@ export default function ContractsPage() {
     }
   };
 
-  const formatTimeAgo = (dateString: string) => {
+  const formatTimeAgo = (dateString: string | null) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -142,50 +139,85 @@ export default function ContractsPage() {
     setSelectAll(newSelected.size === contracts.length);
   };
 
-  const getFilteredContracts = () => {
-    if (activeTab === "All contracts") {
-      return contracts;
+  // Contracts are already filtered by API based on activeTab
+  const filteredContracts = contracts;
+
+  const handleContractClick = async (contract: Contract) => {
+    try {
+      const response = await contractsApi.getContractById(contract.id);
+      if (response.isSuccess && response.data) {
+        setSelectedContract(response.data);
+        setIsDetailModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching contract details:", error);
+      error('Failed to fetch contract details');
     }
-    return contracts.filter(contract => {
-      const statusLower = contract.status.toLowerCase();
-      const tabLower = activeTab.toLowerCase();
-      return statusLower === tabLower;
-    });
   };
 
-  const filteredContracts = getFilteredContracts();
+  const openEditModal = async (contract: Contract) => {
+    try {
+      // Fetch full contract data to get all fields
+      const response = await contractsApi.getContractById(contract.id);
+      if (response.isSuccess && response.data) {
+        const fullContract = response.data;
+        
+        // Convert dates from ISO to DD/MM/YYYY format
+        const formatDateForForm = (dateStr: string | null): string => {
+          if (!dateStr) return '01/01/2025';
+          try {
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+          } catch {
+            return '01/01/2025';
+          }
+        };
 
-  const getContractDetail = (contract: Contract) => {
-    // Generate contract detail data based on the contract
-    return {
-      id: contract.id,
-      contractId: `CT-2025-${contract.id.padStart(4, '0')}`,
-      opportunityName: contract.opportunityName,
-      companyName: contract.companyName,
-      email: contract.email,
-      phoneNumber: contract.phoneNumber,
-      status: contract.status,
-      totalAmount: "£12,500",
-      balanceDue: "£7,500",
-      dueDate: "Dec 20, 2025",
-      season: "24/25 Season",
-      contractValue: "£12,500",
-      contractStart: "01 January, 2026",
-      contractEnd: "30 May 2026",
-      invoiceItems: [
-        { instalment: "Deposit", price: "£7,500", dueDate: "03 January, 2026" },
-        { instalment: "Middle Payment", price: "£2,300", dueDate: "12 March, 2026" },
-        { instalment: "Final Payment", price: "£2,700", dueDate: "05 May, 2026" },
-      ],
-      termsStatus: "Signed",
-      documents: ["Contract.png"],
-    };
-  };
+        // Convert price from number to currency string
+        const formatPriceForForm = (price: number | null): string => {
+          if (price === null || price === undefined) return '£0,000';
+          return `£${price.toLocaleString('en-GB')},000`;
+        };
 
-  const handleContractClick = (contract: Contract) => {
-    const contractDetail = getContractDetail(contract);
-    setSelectedContract(contractDetail);
-    setIsDetailModalOpen(true);
+        // Convert invoice items
+        const invoiceItems = fullContract.contractInvoiceItems?.map(item => ({
+          instalment: item.installment || '',
+          price: formatPriceForForm(item.price),
+          dueDate: formatDateForForm(item.dueDate),
+        })) || [
+          { instalment: 'Deposit', price: '£0', dueDate: '19 December, 2025' },
+          { instalment: 'Middle payment', price: '£0', dueDate: '29 December, 2025' },
+          { instalment: 'Final payment', price: '£0', dueDate: '12 January,,2026' },
+        ];
+
+        const formData: CreateContractFormData = {
+          name: fullContract.name || '',
+          companyName: fullContract.companyName || '',
+          email: fullContract.email || '',
+          phoneNumber: fullContract.phoneNumber || '',
+          contractDetails: fullContract.details || '',
+          status: fullContract.status || '',
+          season: fullContract.season || '',
+          startDate: formatDateForForm(fullContract.startDate),
+          endDate: formatDateForForm(fullContract.endDate),
+          totalAgreedPrice: formatPriceForForm(fullContract.totalAgreedPrice),
+          discount: typeof fullContract.discount === 'string' ? fullContract.discount : (fullContract.discount?.toString() || ''),
+          finalPrice: formatPriceForForm(fullContract.finalPrice),
+          invoiceItems: invoiceItems,
+          cvResume: null, // File can't be pre-filled
+        };
+
+        setEditingContract(contract);
+        setEditFormData(formData);
+        setIsCreateModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching contract for edit:", error);
+      error('Failed to fetch contract details');
+    }
   };
 
   const handleCloseDetailModal = () => {
@@ -193,13 +225,143 @@ export default function ContractsPage() {
     setSelectedContract(null);
   };
 
+  const handleDeleteContract = async () => {
+    if (!deleteContractId) return;
+
+    try {
+      const response = await contractsApi.deleteContract(deleteContractId);
+      if (response.isSuccess) {
+        success('Contract deleted successfully!');
+        await fetchContracts();
+        setDeleteContractId(null);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to delete contract';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to delete contract. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
   const handleCreateContract = async (formData: CreateContractFormData) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Creating contract:', formData);
-      success('Contract created successfully!');
-      // Refresh the contracts list
-      // await fetchContracts();
+      // Convert form data to API format
+      const convertDate = (dateStr: string): string | null => {
+        if (!dateStr || dateStr.trim() === '') return null;
+        // Convert DD/MM/YYYY to ISO format
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}T00:00:00.000Z`;
+        }
+        return null;
+      };
+
+      const convertPrice = (priceStr: string): number | null => {
+        if (!priceStr || priceStr.trim() === '') return null;
+        const cleaned = priceStr.replace(/[£,]/g, '').replace('000', '').trim();
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? null : parsed;
+      };
+
+      // Convert file to base64
+      let cvResumeBase64: string | null = null;
+      let cvResumeFileName: string | null = null;
+      if (formData.cvResume) {
+        cvResumeFileName = formData.cvResume.name;
+        cvResumeBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data:image/...;base64, prefix if present
+            const base64 = result.includes(',') ? result.split(',')[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(formData.cvResume!);
+        });
+      }
+
+      // Convert dueDate from text format to ISO date
+      const convertDueDate = (dateStr: string): string => {
+        if (!dateStr || dateStr.trim() === '') return new Date().toISOString();
+        // Try to parse common date formats
+        try {
+          // Try DD/MM/YYYY first
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}T00:00:00.000Z`;
+          }
+          // Try parsing as natural language date
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+          }
+        } catch {
+          // Fallback to current date
+        }
+        return new Date().toISOString();
+      };
+
+      const contractData: CreateContractRequest = {
+        name: formData.name,
+        companyName: formData.companyName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber || null,
+        status: formData.status || '',
+        details: formData.contractDetails || '',
+        season: formData.season || null,
+        startDate: convertDate(formData.startDate),
+        endDate: convertDate(formData.endDate),
+        totalAgreedPrice: convertPrice(formData.totalAgreedPrice),
+        discount: formData.discount || null, // Keep as string
+        finalPrice: convertPrice(formData.finalPrice),
+        cvResumeBase64: cvResumeBase64,
+        cvResumeFileName: cvResumeFileName,
+        contractInvoiceItems: formData.invoiceItems.map(item => ({
+          installment: item.instalment,
+          price: convertPrice(item.price) || 0,
+          dueDate: convertDueDate(item.dueDate),
+        })),
+      };
+
+      if (editingContract) {
+        // Update contract
+        const response = await contractsApi.updateContract(editingContract.id, contractData);
+        if (response.isSuccess) {
+          success('Contract updated successfully!');
+          await fetchContracts();
+          setEditingContract(null);
+          setIsCreateModalOpen(false);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to update contract';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      } else {
+        // Create contract
+        const response = await contractsApi.createContract(contractData);
+        if (response.isSuccess) {
+          success('Contract created successfully!');
+          await fetchContracts();
+          setIsCreateModalOpen(false);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to create contract';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
@@ -220,9 +382,42 @@ export default function ContractsPage() {
       />
       <CreateContractModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setEditingContract(null);
+          setEditFormData(null);
+        }}
         onSubmit={handleCreateContract}
+        initialData={editFormData}
+        isEditMode={!!editingContract}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      {deleteContractId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Contract</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this contract? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setDeleteContractId(null)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteContract}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
         
@@ -366,30 +561,37 @@ export default function ContractsPage() {
                               </td>
                               <td className="px-4 py-3">
                                 <span className="text-primary hover:underline text-sm font-medium">
-                                  {contract.opportunityName}
+                                  {contract.name || '-'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
-                                {contract.companyName}
+                                {contract.companyName || '-'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
                                 <div className="flex flex-col">
-                                  <span>{contract.email}</span>
-                                  <span>{contract.phoneNumber}</span>
+                                  <span>{contract.email || '-'}</span>
+                                  <span>{contract.phoneNumber || '-'}</span>
                                 </div>
                               </td>
                               <td className="px-4 py-3">
-                                <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
-                                  {contract.status}
-                                </span>
+                                {contract.status ? (
+                                  <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
+                                    {contract.status}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-500">
-                                {formatTimeAgo(contract.lastUpdated)}
+                                {formatTimeAgo(contract.dateModified)}
                               </td>
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <HiDotsVertical className="w-5 h-5" />
-                                </button>
+                                <ContractActionsDropdown
+                                  contractId={contract.id}
+                                  onView={() => handleContractClick(contract)}
+                                  onEdit={() => openEditModal(contract)}
+                                  onDelete={() => setDeleteContractId(contract.id)}
+                                />
                               </td>
                             </tr>
                           );
@@ -419,7 +621,7 @@ export default function ContractsPage() {
                     <option value={100}>100</option>
                   </select>
                   <span className="text-sm text-gray-600">
-                    {Math.min((pageIndex - 1) * pageSize + 1, filteredContracts.length)} - {Math.min(pageIndex * pageSize, filteredContracts.length)} of {filteredContracts.length} items
+                    {Math.min((pageIndex - 1) * pageSize + 1, totalCount)} - {Math.min(pageIndex * pageSize, totalCount)} of {totalCount} items
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -428,13 +630,13 @@ export default function ContractsPage() {
                     onChange={(e) => setPageIndex(Number(e.target.value))}
                     className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   >
-                    {Array.from({ length: Math.ceil(filteredContracts.length / pageSize) }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: Math.ceil(totalCount / pageSize) }, (_, i) => i + 1).map((page) => (
                       <option key={page} value={page}>
                         {page}
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-gray-600">of {Math.ceil(filteredContracts.length / pageSize)} page{Math.ceil(filteredContracts.length / pageSize) !== 1 ? 's' : ''}</span>
+                  <span className="text-sm text-gray-600">of {Math.ceil(totalCount / pageSize)} page{Math.ceil(totalCount / pageSize) !== 1 ? 's' : ''}</span>
                   <button
                     onClick={() => setPageIndex((prev) => Math.max(1, prev - 1))}
                     disabled={pageIndex === 1}
@@ -446,8 +648,8 @@ export default function ContractsPage() {
                     </svg>
                   </button>
                   <button
-                    onClick={() => setPageIndex((prev) => Math.min(Math.ceil(filteredContracts.length / pageSize), prev + 1))}
-                    disabled={pageIndex >= Math.ceil(filteredContracts.length / pageSize)}
+                    onClick={() => setPageIndex((prev) => Math.min(Math.ceil(totalCount / pageSize), prev + 1))}
+                    disabled={pageIndex >= Math.ceil(totalCount / pageSize)}
                     className="p-1.5 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
                     aria-label="Next page"
                   >

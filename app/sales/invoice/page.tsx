@@ -6,18 +6,23 @@ import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import InvoiceDetailModal from "@/components/InvoiceDetailModal";
 import CreateInvoiceModal, { CreateInvoiceFormData } from "@/components/CreateInvoiceModal";
+import InvoiceActionsDropdown from "@/components/InvoiceActionsDropdown";
 import { ToastContainer } from "@/components/Toast";
 import { useToast } from "@/hooks/useToast";
+import { invoicesApi, CreateInvoiceRequest } from "@/lib/api-client";
 import { HiSearch, HiChevronDown, HiDotsVertical, HiPlus } from "react-icons/hi";
 
 interface Invoice {
   id: string;
-  invoiceId: string;
-  customer: string;
+  invoiceNumber: string | null;
+  companyName: string | null;
+  primaryName: string | null;
+  email: string | null;
+  totalAmount: number;
   amountBilled: number;
-  status: string;
-  dueDate: string;
   amountDue: number;
+  dueDate: string | null;
+  status: string | null;
 }
 
 interface InvoicesResponse {
@@ -48,25 +53,34 @@ export default function InvoicePage() {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editFormData, setEditFormData] = useState<CreateInvoiceFormData | null>(null);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
   const { toasts, success, error, removeToast } = useToast();
 
-  // Mock data for now - replace with API call later
-  useEffect(() => {
-    setTimeout(() => {
-      const mockInvoices: Invoice[] = [
-        { id: "1", invoiceId: "INV-2025-0098", customer: "Lily Robinson", amountBilled: 12500, status: "Sent", dueDate: "Dec 20, 2025", amountDue: 12500 },
-        { id: "2", invoiceId: "INV-2025-0098", customer: "Ava Green", amountBilled: 12500, status: "Draft", dueDate: "Dec 20, 2025", amountDue: 12500 },
-        { id: "3", invoiceId: "INV-2025-0098", customer: "Sophie Adams", amountBilled: 12500, status: "Paid", dueDate: "Dec 20, 2025", amountDue: 0 },
-        { id: "4", invoiceId: "INV-2025-0098", customer: "Alfie Turner", amountBilled: 12500, status: "Partially Paid", dueDate: "Dec 20, 2025", amountDue: 7500 },
-        { id: "5", invoiceId: "INV-2025-0098", customer: "Lucas Hall", amountBilled: 12500, status: "Overdue", dueDate: "Dec 20, 2025", amountDue: 12500 },
-      ];
-      setInvoices(mockInvoices);
-      setTotalCount(mockInvoices.length);
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const statusFilter = activeTab === "All invoices" ? null : activeTab;
+      const response = await invoicesApi.getInvoices(pageIndex, pageSize, statusFilter);
+      if (response.isSuccess && response.data) {
+        setInvoices(response.data.data);
+        setTotalCount(response.data.totalCount);
+      }
+    } catch (err) {
+      console.error("Error fetching invoices:", err);
+      error('Failed to fetch invoices');
+    } finally {
       setLoading(false);
-    }, 500);
-  }, []);
+    }
+  };
 
-  const getStatusColor = (status: string) => {
+  useEffect(() => {
+    fetchInvoices();
+  }, [pageIndex, pageSize, activeTab]);
+
+  const getStatusColor = (status: string | null) => {
+    if (!status) return { bg: "bg-gray-200", text: "text-gray-700" };
     const statusLower = status.toLowerCase();
     switch (statusLower) {
       case "sent":
@@ -104,18 +118,8 @@ export default function InvoicePage() {
     setSelectAll(newSelected.size === invoices.length);
   };
 
-  const getFilteredInvoices = () => {
-    if (activeTab === "All invoices") {
-      return invoices;
-    }
-    return invoices.filter(invoice => {
-      const statusLower = invoice.status.toLowerCase();
-      const tabLower = activeTab.toLowerCase();
-      return statusLower === tabLower;
-    });
-  };
-
-  const filteredInvoices = getFilteredInvoices();
+  // Invoices are already filtered by API based on activeTab
+  const filteredInvoices = invoices;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -126,38 +130,18 @@ export default function InvoicePage() {
     }).format(amount);
   };
 
-  const getInvoiceDetail = (invoice: Invoice) => {
-    // Generate invoice detail data based on the invoice
-    return {
-      id: invoice.id,
-      invoiceId: invoice.invoiceId,
-      totalAmount: formatCurrency(invoice.amountBilled),
-      balanceDue: formatCurrency(invoice.amountDue),
-      dueDate: invoice.dueDate,
-      status: invoice.status,
-      company: "Walker Media Group",
-      primaryContact: invoice.customer,
-      email: "james@walkermedia.co",
-      phone: "+44 7924 112 883",
-      billingAddress: "22 Southbury Lane, Leeds LS10 5QF",
-      contractId: "CT-2025-009",
-      packageSold: "Corporate Hospitality Package",
-      contractValue: formatCurrency(invoice.amountBilled),
-      contractStart: "01 January, 2026",
-      contractEnd: "30 May 2026",
-      invoiceItems: [
-        { item: "Corporate Hospitality Package", qty: 1, price: formatCurrency(invoice.amountBilled), total: formatCurrency(invoice.amountBilled) },
-      ],
-      invoiceNote: "Customer requested split payments. Invoice broken into deposit + balance.",
-      ownerName: "Sarah Thompson",
-      ownerTitle: "Commercial Sales Manager",
-    };
-  };
 
-  const handleInvoiceClick = (invoice: Invoice) => {
-    const invoiceDetail = getInvoiceDetail(invoice);
-    setSelectedInvoice(invoiceDetail);
-    setIsDetailModalOpen(true);
+  const handleInvoiceClick = async (invoice: Invoice) => {
+    try {
+      const response = await invoicesApi.getInvoiceById(invoice.id);
+      if (response.isSuccess && response.data) {
+        setSelectedInvoice(response.data);
+        setIsDetailModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching invoice details:", error);
+      error('Failed to fetch invoice details');
+    }
   };
 
   const handleCloseDetailModal = () => {
@@ -165,18 +149,229 @@ export default function InvoicePage() {
     setSelectedInvoice(null);
   };
 
-  const handleCreateInvoice = async (formData: CreateInvoiceFormData) => {
+  const openEditModal = async (invoice: Invoice) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Creating invoice:', formData);
-      success('Invoice created successfully!');
-      // Refresh the invoices list
-      // await fetchInvoices();
+      // Fetch full invoice data to get all fields
+      const response = await invoicesApi.getInvoiceById(invoice.id);
+      if (response.isSuccess && response.data) {
+        const fullInvoice = response.data;
+        
+        // Convert dates from ISO to DD/MM/YYYY format
+        const formatDateForForm = (dateStr: string | null): string => {
+          if (!dateStr) return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          try {
+            const date = new Date(dateStr);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+          } catch {
+            return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          }
+        };
+
+        // Convert price from number to currency string
+        const formatPriceForForm = (price: number | null): string => {
+          if (price === null || price === undefined) return '£0,000';
+          return `£${price.toLocaleString('en-GB')}`;
+        };
+
+        // Convert invoice items
+        const invoiceItems = fullInvoice.invoiceItems?.map(item => {
+          const qty = item.quantity || 0;
+          const price = item.unitPrice || 0;
+          const total = qty * price;
+          return {
+            item: item.itemDescription || '',
+            qty: qty.toString(),
+            price: formatPriceForForm(price),
+            total: formatPriceForForm(total),
+          };
+        }) || [];
+
+        // Reconstruct phone number from country code and number
+        let phoneNumber = '';
+        if (fullInvoice.phoneNumberCountryCode && fullInvoice.phoneNumber) {
+          phoneNumber = `${fullInvoice.phoneNumberCountryCode}${fullInvoice.phoneNumber}`;
+        } else if (fullInvoice.phoneNumber) {
+          phoneNumber = fullInvoice.phoneNumber;
+        }
+
+        const formData: CreateInvoiceFormData = {
+          companyName: fullInvoice.companyName || '',
+          primaryName: fullInvoice.primaryName || '',
+          email: fullInvoice.email || '',
+          phoneNumber: phoneNumber,
+          billingAddress: fullInvoice.billingAddress || '',
+          packageSold: fullInvoice.packageSold || '',
+          contractValue: formatPriceForForm(fullInvoice.contractValue),
+          startDate: formatDateForForm(fullInvoice.contractStartDate),
+          endDate: formatDateForForm(fullInvoice.contractEndDate),
+          status: fullInvoice.status || '',
+          invoiceNotes: fullInvoice.invoiceNotes || '',
+          billedOnDate: formatDateForForm(fullInvoice.billedOnDate),
+          dueDate: formatDateForForm(fullInvoice.dueDate),
+          contractId: fullInvoice.contractId || '',
+          invoiceItems: invoiceItems,
+        };
+
+        setEditingInvoice(invoice);
+        setEditFormData(formData);
+        setIsCreateModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching invoice for edit:", error);
+      error('Failed to fetch invoice details');
+    }
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!deleteInvoiceId) return;
+
+    try {
+      const response = await invoicesApi.deleteInvoice(deleteInvoiceId);
+      if (response.isSuccess) {
+        success('Invoice deleted successfully!');
+        await fetchInvoices();
+        setDeleteInvoiceId(null);
+      } else {
+        const errorMessage = response.message || response.errors?.[0] || 'Failed to delete invoice';
+        error(errorMessage);
+        throw new Error(errorMessage);
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 
                           err.response?.data?.errors?.[0] || 
                           err.message || 
-                          'Failed to create invoice. Please try again.';
+                          'Failed to delete invoice. Please try again.';
+      error(errorMessage);
+      throw err;
+    }
+  };
+
+  const handleCreateInvoice = async (formData: CreateInvoiceFormData) => {
+    try {
+      // Convert form data to API format
+      const convertDate = (dateStr: string): string | null => {
+        if (!dateStr || dateStr.trim() === '') return null;
+        // Convert DD/MM/YYYY to ISO format
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}T00:00:00.000Z`;
+        }
+        // Try parsing as natural language date
+        try {
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+          }
+        } catch {
+          // Fallback to null
+        }
+        return null;
+      };
+
+      const convertPrice = (priceStr: string): number | null => {
+        if (!priceStr || priceStr.trim() === '') return null;
+        const cleaned = priceStr.replace(/[£,]/g, '').trim();
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? null : parsed;
+      };
+
+      // Calculate totals from invoice items
+      let totalAmount = 0;
+      formData.invoiceItems.forEach(item => {
+        const qty = parseFloat(item.qty) || 0;
+        const price = convertPrice(item.price) || 0;
+        totalAmount += qty * price;
+      });
+
+      // For now, amountBilled = totalAmount and amountDue = totalAmount
+      // This can be adjusted if there's a separate field for amountBilled
+      const amountBilled = totalAmount;
+      const amountDue = totalAmount;
+
+      // Parse phone number from E.164 format (e.g., +1234567890) to country code and number
+      let phoneNumberCountryCode: string | null = null;
+      let phoneNumber: string | null = null;
+      
+      if (formData.phoneNumber && formData.phoneNumber.trim()) {
+        const phoneValue = formData.phoneNumber.trim();
+        // PhoneInput returns E.164 format (e.g., +1234567890)
+        // Extract country code (1-3 digits after +) and remaining number
+        // Common country codes: 1 (US/CA), 44 (UK), 33 (FR), 49 (DE), etc.
+        const match = phoneValue.match(/^\+(\d{1,3})(.*)$/);
+        if (match) {
+          phoneNumberCountryCode = `+${match[1]}`;
+          phoneNumber = match[2].trim() || null;
+        } else {
+          // If no + prefix, treat as number without country code
+          phoneNumber = phoneValue;
+        }
+      }
+
+      const invoiceData: CreateInvoiceRequest = {
+        companyName: formData.companyName || null,
+        primaryName: formData.primaryName || null,
+        email: formData.email || null,
+        phoneNumberCountryCode: phoneNumberCountryCode,
+        phoneNumber: phoneNumber,
+        billingAddress: formData.billingAddress || null,
+        totalAmount: totalAmount || null,
+        amountBilled: amountBilled || null,
+        amountDue: amountDue || null,
+        billedOnDate: convertDate(formData.billedOnDate),
+        dueDate: convertDate(formData.dueDate),
+        status: formData.status || null,
+        invoiceNotes: formData.invoiceNotes || null,
+        contractId: formData.contractId || null,
+        packageSold: formData.packageSold || null,
+        contractValue: formData.contractValue ? convertPrice(formData.contractValue) : null,
+        contractStartDate: formData.startDate ? convertDate(formData.startDate) : null,
+        contractEndDate: formData.endDate ? convertDate(formData.endDate) : null,
+        invoiceItems: formData.invoiceItems.map(item => ({
+          id: null,
+          item: item.item || null,
+          qty: parseFloat(item.qty) || null,
+          price: convertPrice(item.price),
+        })),
+      };
+
+      if (editingInvoice) {
+        // Update invoice
+        const response = await invoicesApi.updateInvoice(editingInvoice.id, invoiceData);
+        if (response.isSuccess) {
+          success('Invoice updated successfully!');
+          await fetchInvoices();
+          setIsCreateModalOpen(false);
+          setEditingInvoice(null);
+          setEditFormData(null);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to update invoice';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      } else {
+        // Create invoice
+        const response = await invoicesApi.createInvoice(invoiceData);
+        if (response.isSuccess) {
+          success('Invoice created successfully!');
+          await fetchInvoices();
+          setIsCreateModalOpen(false);
+        } else {
+          const errorMessage = response.message || response.errors?.[0] || 'Failed to create invoice';
+          error(errorMessage);
+          throw new Error(errorMessage);
+        }
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.errors?.[0] || 
+                          err.message || 
+                          'Failed to save invoice. Please try again.';
       error(errorMessage);
       throw err;
     }
@@ -192,9 +387,41 @@ export default function InvoicePage() {
       />
       <CreateInvoiceModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setEditingInvoice(null);
+          setEditFormData(null);
+        }}
         onSubmit={handleCreateInvoice}
+        initialData={editFormData}
+        isEditMode={!!editingInvoice}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      {deleteInvoiceId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Invoice</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setDeleteInvoiceId(null)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteInvoice}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
         
@@ -337,31 +564,38 @@ export default function InvoicePage() {
                                 />
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
-                                {invoice.invoiceId}
+                                {invoice.invoiceNumber || '-'}
                               </td>
                               <td className="px-4 py-3">
                                 <span className="text-primary hover:underline text-sm font-medium">
-                                  {invoice.customer}
+                                  {invoice.primaryName || invoice.companyName || '-'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
                                 {formatCurrency(invoice.amountBilled)}
                               </td>
                               <td className="px-4 py-3">
-                                <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
-                                  {invoice.status}
-                                </span>
+                                {invoice.status ? (
+                                  <span className={`px-2 py-0.5 ${statusColors.bg} ${statusColors.text} text-xs font-medium rounded-full`}>
+                                    {invoice.status}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
-                                {invoice.dueDate}
+                                {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-700">
                                 {formatCurrency(invoice.amountDue)}
                               </td>
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <HiDotsVertical className="w-5 h-5" />
-                                </button>
+                                <InvoiceActionsDropdown
+                                  invoiceId={invoice.id}
+                                  onView={() => handleInvoiceClick(invoice)}
+                                  onEdit={() => openEditModal(invoice)}
+                                  onDelete={() => setDeleteInvoiceId(invoice.id)}
+                                />
                               </td>
                             </tr>
                           );
