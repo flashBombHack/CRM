@@ -51,7 +51,8 @@ export default function LeadDetailPage() {
   const [isIntakeInfoExpanded, setIsIntakeInfoExpanded] = useState(true);
   const [isActivityTimelineExpanded, setIsActivityTimelineExpanded] = useState(true);
   const [isLeadQualificationExpanded, setIsLeadQualificationExpanded] = useState(true);
-  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toasts, success, error, removeToast } = useToast();
 
@@ -258,7 +259,7 @@ export default function LeadDetailPage() {
                             {/* Action Buttons - Joined together */}
                             <div className="flex items-center border border-black rounded-lg overflow-hidden w-full sm:w-auto">
                               <button 
-                                onClick={() => setIsConvertModalOpen(true)}
+                                onClick={() => setIsConvertConfirmOpen(true)}
                                 className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 bg-transparent border-r border-black hover:bg-primary hover:text-white transition-colors flex-1 sm:flex-none whitespace-nowrap"
                               >
                                 Convert to opportunity
@@ -710,22 +711,76 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Convert Lead Modal */}
-      <ConvertLeadModal
-        isOpen={isConvertModalOpen}
-        onClose={() => setIsConvertModalOpen(false)}
-        onSubmit={async (data: ConvertLeadFormData) => {
-          // Handle form submission
-          console.log('Convert lead data:', data);
-          // TODO: Implement API call to convert lead
-          setIsConvertModalOpen(false);
-        }}
-        leadData={{
-          firstName: lead?.firstName || null,
-          lastName: null, // You may need to add this to the LeadDetail interface
-          companyName: lead?.companyName || null,
-        }}
-      />
+      {/* Simple confirmation modal for converting to opportunity */}
+      {lead && isConvertConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Convert to opportunity</h2>
+              <button
+                onClick={() => !isConverting && setIsConvertConfirmOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={isConverting}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-sm text-gray-800">
+                Are you sure you want to convert this lead to an opportunity?
+              </p>
+              <p className="text-xs text-gray-500">
+                This will move the lead into the Opportunities pipeline. You can configure the full
+                conversion details later.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+              <button
+                type="button"
+                onClick={() => !isConverting && setIsConvertConfirmOpen(false)}
+                disabled={isConverting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!lead || isConverting) return;
+                  try {
+                    setIsConverting(true);
+                    const response = await leadsApi.moveToOpportunity(lead.id);
+                    if (response?.isSuccess) {
+                      success("Lead converted to opportunity");
+                      setIsConvertConfirmOpen(false);
+                      router.push("/sales/opportunity");
+                    } else {
+                      const errorMessage =
+                        response?.message ||
+                        response?.errors?.[0] ||
+                        "Failed to convert lead to opportunity";
+                      error(errorMessage);
+                    }
+                  } catch (err: any) {
+                    const errorMessage =
+                      err?.response?.data?.message ||
+                      err?.response?.data?.errors?.[0] ||
+                      err?.message ||
+                      "Failed to convert lead to opportunity. Please try again.";
+                    error(errorMessage);
+                  } finally {
+                    setIsConverting(false);
+                  }
+                }}
+                disabled={isConverting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isConverting ? "Converting..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Lead Modal */}
       {lead && (
@@ -756,3 +811,5 @@ export default function LeadDetailPage() {
     </ProtectedRoute>
   );
 }
+
+

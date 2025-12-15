@@ -124,3 +124,4 @@ Then edit `.env.local` with your values. This file is git-ignored and won't be c
 - [Next.js Environment Variables](https://nextjs.org/docs/basic-features/environment-variables)
 - [Vercel Environment Variables](https://vercel.com/docs/concepts/projects/environment-variables)
 
+

@@ -81,6 +81,10 @@ export default function Sidebar() {
   };
 
   const isActive = (href: string) => {
+    // Treat AI Ideas as part of Reports & Analytics section
+    if (href === "/reports") {
+      return pathname.startsWith("/reports") || pathname.startsWith("/ai-ideas");
+    }
     return pathname === href || pathname.startsWith(href + "/");
   };
 

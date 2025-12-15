@@ -408,6 +408,33 @@ export default function ProposalPage() {
         initialData={editFormData}
         isEditMode={!!editingProposal}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {deleteProposalId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Proposal</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this proposal? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setDeleteProposalId(null)}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProposal}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
         
@@ -669,3 +696,5 @@ export default function ProposalPage() {
     </ProtectedRoute>
   );
 }
+
+

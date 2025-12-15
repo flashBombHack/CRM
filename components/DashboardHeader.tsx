@@ -28,7 +28,7 @@ export default function DashboardHeader() {
     if (pathname.startsWith("/services")) {
       return "Services";
     }
-    if (pathname.startsWith("/reports")) {
+    if (pathname.startsWith("/reports") || pathname.startsWith("/ai-ideas")) {
       return "Reports & Analytics";
     }
     if (pathname.startsWith("/accounts")) {

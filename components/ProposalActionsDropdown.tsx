@@ -144,3 +144,4 @@ export default function ProposalActionsDropdown({ proposalId, onView, onEdit, on
     </div>
   );
 }
+

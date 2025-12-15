@@ -144,3 +144,4 @@ export default function InvoiceActionsDropdown({ invoiceId, onView, onEdit, onDe
     </div>
   );
 }
+

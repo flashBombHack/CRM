@@ -280,6 +280,10 @@ export const leadsApi = {
     const response = await apiClient.get(`/api/Leads/${id}`);
     return response.data;
   },
+  moveToOpportunity: async (id: string) => {
+    const response = await apiClient.post(`/api/Leads/${id}/move-to-opportunity`);
+    return response.data;
+  },
   createLead: async (leadData: CreateLeadRequest) => {
     const response = await apiClient.post('/api/Leads', leadData);
     return response.data;
@@ -290,6 +294,200 @@ export const leadsApi = {
   },
   deleteLead: async (id: string) => {
     const response = await apiClient.delete(`/api/Leads/${id}`);
+    return response.data;
+  },
+};
+
+// Analytics API
+export interface SeasonRevenueSummary {
+  totalRevenueYTD: number;
+  forecastedRevenueNext90Days: number;
+  totalPipelineValue: number;
+  dealsClosedYTD: number;
+  winRate: number;
+}
+
+export interface SeasonRevenueSummaryResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: SeasonRevenueSummary | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export interface RevenueForecastItem {
+  month: string;
+  year: number;
+  revenue: number;
+}
+
+export interface RevenueForecastResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: RevenueForecastItem[] | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export interface PipelineByProductLineItem {
+  product: string;
+  opportunities: number;
+  pipelineValue: number;
+}
+
+export interface PipelineByProductLineResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: PipelineByProductLineItem[] | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export interface SponsorshipRevenueByCategoryItem {
+  category: string;
+  revenue: number;
+  percentageContribution: number;
+}
+
+export interface SponsorshipRevenueByCategoryResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: SponsorshipRevenueByCategoryItem[] | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export const analyticsApi = {
+  getSeasonRevenueSummary: async (
+    year?: number
+  ): Promise<SeasonRevenueSummaryResponse> => {
+    const response = await apiClient.get('/api/Analytics/season-revenue-summary', {
+      params: {
+        year: year ?? null,
+      },
+    });
+    return response.data;
+  },
+  getRevenueForecast: async (
+    year?: number
+  ): Promise<RevenueForecastResponse> => {
+    const response = await apiClient.get('/api/Analytics/revenue-forecast', {
+      params: {
+        year: year ?? null,
+      },
+    });
+    return response.data;
+  },
+  getPipelineByProductLine: async (): Promise<PipelineByProductLineResponse> => {
+    const response = await apiClient.get('/api/Analytics/pipeline-by-product-line');
+    return response.data;
+  },
+  getSponsorshipRevenueByCategory: async (
+    year?: number
+  ): Promise<SponsorshipRevenueByCategoryResponse> => {
+    const response = await apiClient.get(
+      '/api/Analytics/sponsorship-revenue-by-category',
+      {
+        params: {
+          year: year ?? null,
+        },
+      }
+    );
+    return response.data;
+  },
+};
+
+// AI Ideas API
+export interface AiIdeasAnswerData {
+  answer: string | null;
+  data: any | null;
+  entityType: string | null;
+  count: number | null;
+  summary: string | null;
+}
+
+export interface AiIdeasAskResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: AiIdeasAnswerData | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export const aiIdeasApi = {
+  ask: async (query: string): Promise<AiIdeasAskResponse> => {
+    const response = await apiClient.post("/api/AiIdeas/ask", {
+      query,
+    });
+    return response.data;
+  },
+};
+
+// Opportunities API
+export interface OpportunityListItem {
+  id: string;
+  firstName: string | null;
+  role: string | null;
+  companyName: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  website: string | null;
+  preferredContactMethod: string | null;
+  country: string | null;
+  city: string | null;
+  source: string | null;
+  status: string | null;
+  noOfEmployees: string | null;
+  estimatedPotential: number | null;
+  productInterest: string[];
+}
+
+export interface OpportunitiesListResponse {
+  isSuccess: boolean;
+  message: string | null;
+  data: {
+    pageIndex: number;
+    pageSize: number;
+    totalCount: number;
+    data: OpportunityListItem[];
+  } | null;
+  errors: string[];
+  responseCode: number;
+}
+
+export const opportunitiesApi = {
+  getOpportunities: async (
+    pageIndex: number = 1,
+    pageSize: number = 20
+  ): Promise<OpportunitiesListResponse> => {
+    const response = await apiClient.get('/api/Opportunities', {
+      params: {
+        pageIndex,
+        pageSize,
+      },
+    });
+    return response.data;
+  },
+  createProposalForOpportunity: async (id: string, payload: Omit<CreateProposalRequest, 'company' | 'firstName' | 'lastName' | 'email'>) => {
+    const response = await apiClient.post(`/api/Opportunities/${id}/create-proposal`, payload);
+    return response.data;
+  },
+  createContractForOpportunity: async (
+    id: string,
+    payload: {
+      details: string | null;
+      season: string | null;
+      startDate: string | null;
+      endDate: string | null;
+      totalAgreedPrice: number | null;
+      discount: string | null;
+      finalPrice: number | null;
+      cvResumeBase64: string | null;
+      cvResumeFileName: string | null;
+      contractInvoiceItems: ContractInvoiceItem[];
+    }
+  ) => {
+    const response = await apiClient.post(`/api/Opportunities/${id}/create-contract`, payload);
     return response.data;
   },
 };

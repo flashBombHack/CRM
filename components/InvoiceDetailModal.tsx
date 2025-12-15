@@ -337,3 +337,4 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoice }: Invoice
     </>
   );
 }
+

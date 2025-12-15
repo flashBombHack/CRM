@@ -6,27 +6,20 @@ import DashboardHeader from "@/components/DashboardHeader";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SvgIcon from "@/components/SvgIcon";
 import { HiSearch, HiChevronDown, HiDotsVertical, HiPlus, HiUser } from "react-icons/hi";
+import { opportunitiesApi, OpportunitiesListResponse, OpportunityListItem, CreateProposalRequest, ContractInvoiceItem } from "@/lib/api-client";
+import CreateProposalModal, { CreateProposalFormData } from "@/components/CreateProposalModal";
+import CreateContractModal, { CreateContractFormData } from "@/components/CreateContractModal";
+import { ToastContainer } from "@/components/Toast";
+import { useToast } from "@/hooks/useToast";
+import { useRouter } from "next/navigation";
 
-interface Opportunity {
+interface OpportunityCard {
   id: string;
   name: string;
-  amount: number;
+  amount: number | null;
   companyName: string;
   date: string;
   stage: string;
-}
-
-interface OpportunitiesResponse {
-  isSuccess: boolean;
-  message: string | null;
-  data: {
-    pageIndex: number;
-    pageSize: number;
-    totalCount: number;
-    data: Opportunity[];
-  };
-  errors: string[];
-  responseCode: number;
 }
 
 // Helper function to darken a color for better text visibility
@@ -54,47 +47,239 @@ const STAGES = [
 ];
 
 export default function OpportunityPage() {
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeMenuOpportunityId, setActiveMenuOpportunityId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [modalOpportunityId, setModalOpportunityId] = useState<string | null>(null);
+  const { toasts, success, error, removeToast } = useToast();
+  const router = useRouter();
 
-  // Mock data for now - replace with API call later
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const mockOpportunities: Opportunity[] = [
-        { id: "1", name: "Harvey Collins", amount: 12000, companyName: "Collins Industrial Supply", date: "Dec 9, 2025", stage: "qualify" },
-        { id: "2", name: "Millie Dawson", amount: 11000, companyName: "Dawson PR & Media", date: "Dec 10, 2025", stage: "qualify" },
-        { id: "3", name: "John Smith", amount: 15000, companyName: "Smith Corp", date: "Dec 11, 2025", stage: "qualify" },
-        { id: "4", name: "Sarah Johnson", amount: 18000, companyName: "Johnson Industries", date: "Dec 12, 2025", stage: "qualify" },
-        { id: "5", name: "Mike Brown", amount: 20000, companyName: "Brown Solutions", date: "Dec 13, 2025", stage: "qualify" },
-        { id: "6", name: "Emma Wilson", amount: 13000, companyName: "Wilson Group", date: "Dec 8, 2025", stage: "meet-present" },
-        { id: "7", name: "David Lee", amount: 16000, companyName: "Lee Enterprises", date: "Dec 9, 2025", stage: "meet-present" },
-        { id: "8", name: "Lisa Anderson", amount: 14000, companyName: "Anderson Co", date: "Dec 7, 2025", stage: "propose" },
-        { id: "9", name: "Tom Harris", amount: 17000, companyName: "Harris Ltd", date: "Dec 8, 2025", stage: "propose" },
-        { id: "10", name: "Amy Taylor", amount: 19000, companyName: "Taylor Inc", date: "Dec 9, 2025", stage: "propose" },
-        { id: "11", name: "Chris Martin", amount: 22000, companyName: "Martin Systems", date: "Dec 10, 2025", stage: "propose" },
-        { id: "12", name: "Rachel Green", amount: 25000, companyName: "Green Tech", date: "Dec 6, 2025", stage: "negotiate" },
-        { id: "13", name: "James White", amount: 21000, companyName: "White Solutions", date: "Dec 7, 2025", stage: "negotiate" },
-        { id: "14", name: "Olivia Black", amount: 23000, companyName: "Black Industries", date: "Dec 8, 2025", stage: "negotiate" },
-        { id: "15", name: "Noah Gray", amount: 24000, companyName: "Gray Corp", date: "Dec 9, 2025", stage: "negotiate" },
-        { id: "16", name: "Sophia Blue", amount: 26000, companyName: "Blue Enterprises", date: "Dec 10, 2025", stage: "negotiate" },
-        { id: "17", name: "Lucas Red", amount: 27000, companyName: "Red Group", date: "Dec 11, 2025", stage: "negotiate" },
-        { id: "18", name: "Mia Yellow", amount: 28000, companyName: "Yellow Inc", date: "Dec 5, 2025", stage: "closed" },
-        { id: "19", name: "Ethan Purple", amount: 29000, companyName: "Purple Systems", date: "Dec 6, 2025", stage: "closed" },
-        { id: "20", name: "Isabella Orange", amount: 30000, companyName: "Orange Tech", date: "Dec 7, 2025", stage: "closed" },
-        { id: "21", name: "Aiden Pink", amount: 31000, companyName: "Pink Solutions", date: "Dec 8, 2025", stage: "closed" },
-      ];
-      setOpportunities(mockOpportunities);
-      setLoading(false);
-    }, 500);
+    const fetchOpportunities = async () => {
+      try {
+        setLoading(true);
+        const response: OpportunitiesListResponse = await opportunitiesApi.getOpportunities(1, 50);
+        if (response.isSuccess && response.data && Array.isArray(response.data.data)) {
+          const mapped: OpportunityCard[] = response.data.data.map((item: OpportunityListItem) => {
+            const name =
+              item.firstName ||
+              item.companyName ||
+              item.email?.split("@")[0] ||
+              "Unknown";
+
+            // Map backend status to simple stage buckets for the board
+            const status = item.status?.toLowerCase() || "";
+            let stage = "qualify";
+            if (status.includes("meeting") || status.includes("present")) {
+              stage = "meet-present";
+            } else if (status.includes("proposal") || status.includes("propose")) {
+              stage = "propose";
+            } else if (status.includes("negotiat")) {
+              stage = "negotiate";
+            } else if (status.includes("closed") || status.includes("won") || status.includes("lost")) {
+              stage = "closed";
+            }
+
+            return {
+              id: item.id,
+              name,
+              amount: item.estimatedPotential,
+              companyName: item.companyName || "—",
+              // Backend doesn't currently provide a created date in this payload
+              date: "",
+              stage,
+            };
+          });
+          setOpportunities(mapped);
+        } else {
+          setOpportunities([]);
+        }
+      } catch (err) {
+        console.error("Error fetching opportunities:", err);
+        setOpportunities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOpportunities();
   }, []);
 
-  const getOpportunitiesByStage = (stageId: string) => {
-    return opportunities.filter(opp => opp.stage === stageId);
+  // Close the floating menu when clicking anywhere else (but not while a modal is open)
+  useEffect(() => {
+    if (!activeMenuOpportunityId || isProposalModalOpen || isContractModalOpen) return;
+
+    const handleClickOutside = () => {
+      setActiveMenuOpportunityId(null);
+      setMenuPosition(null);
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [activeMenuOpportunityId]);
+
+  const activeOpportunity = activeMenuOpportunityId
+    ? opportunities.find((opp) => opp.id === activeMenuOpportunityId) || null
+    : null;
+
+  const modalOpportunity = modalOpportunityId
+    ? opportunities.find((opp) => opp.id === modalOpportunityId) || null
+    : null;
+
+  const buildProposalPayloadFromForm = (form: CreateProposalFormData): Omit<CreateProposalRequest, 'company' | 'firstName' | 'lastName' | 'email'> => {
+    const convertDate = (dateStr: string): string | null => {
+      if (!dateStr || dateStr.trim() === '') return null;
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}T00:00:00.000Z`;
+      }
+      try {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toISOString();
+        }
+      } catch {
+        // ignore
+      }
+      return null;
+    };
+
+    const convertPrice = (priceStr: string): number | null => {
+      if (!priceStr || priceStr.trim() === '') return null;
+      const cleaned = priceStr.replace(/[£,]/g, '').trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    return {
+      phoneNumber: form.phoneNumber || null,
+      package: form.package || null,
+      terms: form.terms || null,
+      startDate: convertDate(form.startDate),
+      endDate: convertDate(form.endDate),
+      price: convertPrice(form.price),
+      discount: convertPrice(form.discount),
+      total: convertPrice(form.total),
+      cvResumeFileName: form.cvResume ? form.cvResume.name : null,
+      cvResumeFilePath: form.cvResume ? form.cvResume.name : null,
+      status: form.status || "Draft",
+      proposalInvoiceItems: form.proposalInvoiceItems.map((item) => ({
+        installment: item.installment || "",
+        price: convertPrice(item.price) || 0,
+        dueDate: convertDate(item.dueDate) || new Date().toISOString(),
+      })),
+    };
   };
 
-  const formatCurrency = (amount: number) => {
+  const buildContractPayloadFromForm = async (form: CreateContractFormData): Promise<{
+    details: string | null;
+    season: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    totalAgreedPrice: number | null;
+    discount: string | null;
+    finalPrice: number | null;
+    cvResumeBase64: string | null;
+    cvResumeFileName: string | null;
+    contractInvoiceItems: ContractInvoiceItem[];
+  }> => {
+    const convertDate = (dateStr: string): string | null => {
+      if (!dateStr || dateStr.trim() === '') return null;
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}T00:00:00.000Z`;
+      }
+      return null;
+    };
+
+    const convertPrice = (priceStr: string): number | null => {
+      if (!priceStr || priceStr.trim() === '') return null;
+      const cleaned = priceStr.replace(/[£,]/g, '').replace('000', '').trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    let cvResumeBase64: string | null = null;
+    let cvResumeFileName: string | null = null;
+
+    if (form.cvResume) {
+      cvResumeFileName = form.cvResume.name;
+      cvResumeBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64 = result.includes(",") ? result.split(",")[1] : result;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(form.cvResume as File);
+      });
+    }
+
+    const convertDueDate = (dateStr: string): string => {
+      if (!dateStr || dateStr.trim() === "") return new Date().toISOString();
+      try {
+        const parts = dateStr.split("/");
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, "0");
+          const month = parts[1].padStart(2, "0");
+          const year = parts[2];
+          return `${year}-${month}-${day}T00:00:00.000Z`;
+        }
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toISOString();
+        }
+      } catch {
+        // ignore
+      }
+      return new Date().toISOString();
+    };
+
+    return {
+      details: form.contractDetails || null,
+      season: form.season || null,
+      startDate: convertDate(form.startDate),
+      endDate: convertDate(form.endDate),
+      totalAgreedPrice: convertPrice(form.totalAgreedPrice),
+      discount: form.discount || null,
+      finalPrice: convertPrice(form.finalPrice),
+      cvResumeBase64,
+      cvResumeFileName,
+      contractInvoiceItems: form.invoiceItems.map((item) => ({
+        installment: item.instalment,
+        price: convertPrice(item.price) || 0,
+        dueDate: convertDueDate(item.dueDate),
+      })),
+    };
+  };
+
+  const getOpportunitiesByStage = (stageId: string) => {
+    const filtered = opportunities.filter(
+      (opp) =>
+        opp.stage === stageId &&
+        (opp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          opp.companyName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+    return filtered;
+  };
+
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null || amount === undefined) {
+      return "—";
+    }
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: 'GBP',
@@ -210,7 +395,31 @@ export default function OpportunityPage() {
                                 key={opportunity.id}
                                 className="bg-[#F7F8F8] rounded-lg p-3 relative cursor-pointer hover:shadow-md transition-shadow"
                               >
-                                <button className="absolute top-2 right-2 p-0.5 hover:bg-white/50 rounded transition-colors">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                    const menuWidth = 224; // w-56
+                                    const estimatedMenuHeight = 260; // approximate
+
+                                    let top = rect.bottom + 8;
+                                    let left = rect.right - menuWidth;
+
+                                    if (left < 8) left = 8;
+                                    if (left + menuWidth > window.innerWidth - 8) {
+                                      left = window.innerWidth - menuWidth - 8;
+                                    }
+
+                                    if (top + estimatedMenuHeight > window.innerHeight - 8) {
+                                      top = Math.max(8, rect.top - estimatedMenuHeight - 8);
+                                    }
+
+                                    setActiveMenuOpportunityId(opportunity.id);
+                                    setMenuPosition({ top, left });
+                                  }}
+                                  className="absolute top-2 right-2 p-0.5 hover:bg-white/50 rounded transition-colors"
+                                >
                                   <HiDotsVertical className="w-4 h-4 text-gray-400" />
                                 </button>
                                 
@@ -261,6 +470,211 @@ export default function OpportunityPage() {
           </main>
         </div>
       </div>
+
+      {/* Toasts */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+
+      {/* Floating opportunity actions menu rendered above all containers */}
+      {activeOpportunity && menuPosition && (
+        <div
+          className="fixed z-[2000] w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 pb-2 border-b border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Move to stage
+            </p>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {STAGES.map((targetStage) => (
+              <button
+                key={targetStage.id}
+                type="button"
+                disabled={targetStage.id === activeOpportunity.stage}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (targetStage.id === activeOpportunity.stage) return;
+                  setOpportunities((prev) =>
+                    prev.map((opp) =>
+                      opp.id === activeOpportunity.id
+                        ? { ...opp, stage: targetStage.id }
+                        : opp
+                    )
+                  );
+                  setActiveMenuOpportunityId(null);
+                  setMenuPosition(null);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left hover:bg-gray-50 ${
+                  targetStage.id === activeOpportunity.stage
+                    ? "text-gray-400 cursor-default"
+                    : "text-gray-700"
+                }`}
+              >
+                <span>{targetStage.name}</span>
+                {targetStage.id === activeOpportunity.stage && (
+                  <span className="text-[10px] uppercase tracking-wide">
+                    Current
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-100">
+            <div className="px-3 pb-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Actions
+              </p>
+            </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+                if (activeOpportunity) {
+                  setModalOpportunityId(activeOpportunity.id);
+                  setIsProposalModalOpen(true);
+                  setActiveMenuOpportunityId(null);
+                  setMenuPosition(null);
+                }
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-gray-700 hover:bg-gray-50"
+          >
+            Add proposal
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+                if (activeOpportunity) {
+                  setModalOpportunityId(activeOpportunity.id);
+                  setIsContractModalOpen(true);
+                  setActiveMenuOpportunityId(null);
+                  setMenuPosition(null);
+                }
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-gray-700 hover:bg-gray-50"
+          >
+            Add contract
+          </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                // In-session removal only
+                setOpportunities((prev) =>
+                  prev.filter((opp) => opp.id !== activeOpportunity.id)
+                );
+                setActiveMenuOpportunityId(null);
+                setMenuPosition(null);
+              }}
+              className="w-full px-3 py-1.5 text-xs text-left text-red-600 hover:bg-red-50"
+            >
+              Remove from board
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenuOpportunityId(null);
+                setMenuPosition(null);
+              }}
+              className="w-full px-3 py-1.5 text-xs text-left text-gray-600 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Proposal Modal (from opportunity) */}
+      {modalOpportunity && (
+        <CreateProposalModal
+          isOpen={isProposalModalOpen}
+          onClose={() => {
+            setIsProposalModalOpen(false);
+            setModalOpportunityId(null);
+          }}
+          onSubmit={async (formData: CreateProposalFormData) => {
+            try {
+              const payload = buildProposalPayloadFromForm(formData);
+              const response = await opportunitiesApi.createProposalForOpportunity(
+                modalOpportunity.id,
+                payload
+              );
+              if (response?.isSuccess) {
+                success("Proposal created successfully!");
+                setIsProposalModalOpen(false);
+                setModalOpportunityId(null);
+                router.push("/sales/proposal");
+              } else {
+                const msg =
+                  response?.message ||
+                  response?.errors?.[0] ||
+                  "Failed to create proposal for opportunity";
+                error(msg);
+                throw new Error(msg);
+              }
+            } catch (err: any) {
+              const msg =
+                err?.response?.data?.message ||
+                err?.response?.data?.errors?.[0] ||
+                err?.message ||
+                "Failed to create proposal for opportunity. Please try again.";
+              error(msg);
+              throw err;
+            }
+          }}
+          initialData={null}
+          isEditMode={false}
+          hideContactFields={true}
+        />
+      )}
+
+      {/* Add Contract Modal (from opportunity) */}
+      {modalOpportunity && (
+        <CreateContractModal
+          isOpen={isContractModalOpen}
+          onClose={() => {
+            setIsContractModalOpen(false);
+            setModalOpportunityId(null);
+          }}
+          onSubmit={async (formData: CreateContractFormData) => {
+            try {
+              const payload = await buildContractPayloadFromForm(formData);
+              const response = await opportunitiesApi.createContractForOpportunity(
+                modalOpportunity.id,
+                payload
+              );
+              if (response?.isSuccess) {
+                success("Contract created successfully!");
+                setIsContractModalOpen(false);
+                setModalOpportunityId(null);
+                router.push("/sales/contracts");
+              } else {
+                const msg =
+                  response?.message ||
+                  response?.errors?.[0] ||
+                  "Failed to create contract for opportunity";
+                error(msg);
+                throw new Error(msg);
+              }
+            } catch (err: any) {
+              const msg =
+                err?.response?.data?.message ||
+                err?.response?.data?.errors?.[0] ||
+                err?.message ||
+                "Failed to create contract for opportunity. Please try again.";
+              error(msg);
+              throw err;
+            }
+          }}
+          initialData={null}
+          isEditMode={false}
+          hideClientInfo={true}
+        />
+      )}
     </ProtectedRoute>
   );
 }
+
+

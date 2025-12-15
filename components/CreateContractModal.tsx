@@ -12,6 +12,7 @@ interface CreateContractModalProps {
   onSubmit: (data: CreateContractFormData) => Promise<void>;
   initialData?: CreateContractFormData | null;
   isEditMode?: boolean;
+  hideClientInfo?: boolean;
 }
 
 export interface CreateContractFormData {
@@ -35,7 +36,7 @@ export interface CreateContractFormData {
   cvResume: File | null;
 }
 
-export default function CreateContractModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateContractModalProps) {
+export default function CreateContractModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false, hideClientInfo = false }: CreateContractModalProps) {
   const [isClientInfoExpanded, setIsClientInfoExpanded] = useState(true);
   const [isContractDetailsExpanded, setIsContractDetailsExpanded] = useState(true);
   const [isPricingExpanded, setIsPricingExpanded] = useState(true);
@@ -204,7 +205,9 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit, initial
 
   if (!isOpen) return null;
 
-  const isFormValid = formData.name.trim() && formData.companyName.trim() && formData.email.trim();
+  const isFormValid = hideClientInfo
+    ? true
+    : formData.name.trim() && formData.companyName.trim() && formData.email.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -224,75 +227,77 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit, initial
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="px-6 py-4 space-y-4">
             {/* Client Information Section */}
-            <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E1E3E6' }}>
-              {/* Header */}
-              <button
-                type="button"
-                onClick={() => setIsClientInfoExpanded(!isClientInfoExpanded)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left rounded-t-lg"
-                style={{ backgroundColor: '#F7F8F8', borderBottom: '1px solid #E1E3E6' }}
-              >
-                <h3 className="text-lg font-medium text-gray-900">Client Information</h3>
-                {isClientInfoExpanded ? (
-                  <HiChevronUp className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <HiChevronDown className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
+            {!hideClientInfo && (
+              <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E1E3E6' }}>
+                {/* Header */}
+                <button
+                  type="button"
+                  onClick={() => setIsClientInfoExpanded(!isClientInfoExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left rounded-t-lg"
+                  style={{ backgroundColor: '#F7F8F8', borderBottom: '1px solid #E1E3E6' }}
+                >
+                  <h3 className="text-lg font-medium text-gray-900">Client Information</h3>
+                  {isClientInfoExpanded ? (
+                    <HiChevronUp className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <HiChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
+                </button>
 
-              {isClientInfoExpanded && (
-                <div className="p-4 bg-white space-y-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => handleChange('name', e.target.value)}
-                      placeholder="Enter name"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Company name</label>
-                    <input
-                      type="text"
-                      value={formData.companyName}
-                      onChange={(e) => handleChange('companyName', e.target.value)}
-                      placeholder="Enter company name"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="johndoe@slow.co"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
-                    </label>
-                    <div className="phone-input-container">
-                      <PhoneInput
-                        international
-                        defaultCountry="US"
-                        value={formData.phoneNumber as Value}
-                        onChange={(value) => handleChange('phoneNumber', value || '')}
-                        placeholder="Enter phone number"
-                        className="phone-input-wrapper"
+                {isClientInfoExpanded && (
+                  <div className="p-4 bg-white space-y-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                        placeholder="Enter name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Company name</label>
+                      <input
+                        type="text"
+                        value={formData.companyName}
+                        onChange={(e) => handleChange('companyName', e.target.value)}
+                        placeholder="Enter company name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleChange('email', e.target.value)}
+                        placeholder="johndoe@slow.co"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone Number
+                      </label>
+                      <div className="phone-input-container">
+                        <PhoneInput
+                          international
+                          defaultCountry="US"
+                          value={formData.phoneNumber as Value}
+                          onChange={(value) => handleChange('phoneNumber', value || '')}
+                          placeholder="Enter phone number"
+                          className="phone-input-wrapper"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Contract Details Section */}
             <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E1E3E6' }}>
@@ -584,3 +589,5 @@ export default function CreateContractModal({ isOpen, onClose, onSubmit, initial
     </div>
   );
 }
+
+

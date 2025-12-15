@@ -12,6 +12,7 @@ interface CreateProposalModalProps {
   onSubmit: (data: CreateProposalFormData) => Promise<void>;
   initialData?: CreateProposalFormData | null;
   isEditMode?: boolean;
+  hideContactFields?: boolean;
 }
 
 export interface CreateProposalFormData {
@@ -36,7 +37,7 @@ export interface CreateProposalFormData {
   cvResume: File | null;
 }
 
-export default function CreateProposalModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false }: CreateProposalModalProps) {
+export default function CreateProposalModal({ isOpen, onClose, onSubmit, initialData, isEditMode = false, hideContactFields = false }: CreateProposalModalProps) {
   const [isProposalDetailsExpanded, setIsProposalDetailsExpanded] = useState(true);
   const [isPriceDetailsExpanded, setIsPriceDetailsExpanded] = useState(true);
   const [isInvoiceItemsExpanded, setIsInvoiceItemsExpanded] = useState(true);
@@ -154,8 +155,10 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit, initial
     e.preventDefault();
     
     // Validation
-    if (!formData.company.trim() || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
-      return;
+    if (!hideContactFields) {
+      if (!formData.company.trim() || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -195,7 +198,9 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit, initial
 
   if (!isOpen) return null;
 
-  const isFormValid = formData.company.trim() && formData.firstName.trim() && formData.lastName.trim() && formData.email.trim();
+  const isFormValid = hideContactFields
+    ? true
+    : formData.company.trim() && formData.firstName.trim() && formData.lastName.trim() && formData.email.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -233,66 +238,70 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit, initial
 
               {isProposalDetailsExpanded && (
                 <div className="p-4 bg-white space-y-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Company</label>
-                    <input
-                      type="text"
-                      value={formData.company}
-                      onChange={(e) => handleChange('company', e.target.value)}
-                      placeholder="Enter company name"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
-                  </div>
+                  {!hideContactFields && (
+                    <>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Company</label>
+                        <input
+                          type="text"
+                          value={formData.company}
+                          onChange={(e) => handleChange('company', e.target.value)}
+                          placeholder="Enter company name"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                        />
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">First Name</label>
-                      <input
-                        type="text"
-                        value={formData.firstName}
-                        onChange={(e) => handleChange('firstName', e.target.value)}
-                        placeholder="Enter first name"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Last Name</label>
-                      <input
-                        type="text"
-                        value={formData.lastName}
-                        onChange={(e) => handleChange('lastName', e.target.value)}
-                        placeholder="Enter last name"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                      />
-                    </div>
-                  </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">First Name</label>
+                          <input
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) => handleChange('firstName', e.target.value)}
+                            placeholder="Enter first name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                          <input
+                            type="text"
+                            value={formData.lastName}
+                            onChange={(e) => handleChange('lastName', e.target.value)}
+                            placeholder="Enter last name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
-                      placeholder="Enter email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => handleChange('email', e.target.value)}
+                          placeholder="Enter email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
-                    </label>
-                    <div className="phone-input-container">
-                      <PhoneInput
-                        international
-                        defaultCountry="US"
-                        value={formData.phoneNumber as Value}
-                        onChange={(value) => handleChange('phoneNumber', value || '')}
-                        placeholder="Enter phone number"
-                        className="phone-input-wrapper"
-                      />
-                    </div>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone Number
+                        </label>
+                        <div className="phone-input-container">
+                          <PhoneInput
+                            international
+                            defaultCountry="US"
+                            value={formData.phoneNumber as Value}
+                            onChange={(value) => handleChange('phoneNumber', value || '')}
+                            placeholder="Enter phone number"
+                            className="phone-input-wrapper"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Select Package</label>
@@ -573,3 +582,5 @@ export default function CreateProposalModal({ isOpen, onClose, onSubmit, initial
     </div>
   );
 }
+
+
