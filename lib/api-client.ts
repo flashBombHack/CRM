@@ -73,8 +73,15 @@ export const tokenStorage = {
   isTokenExpired: (): boolean => {
     if (typeof window === 'undefined') return true;
     const expiryTime = localStorage.getItem(TOKEN_EXPIRY_KEY);
-    if (!expiryTime) return true;
-    return Date.now() >= parseInt(expiryTime, 10);
+    if (!expiryTime) {
+      // If no expiry time is set, check if we have a token
+      // If we have a token but no expiry, assume it's valid (might be from old login)
+      const token = localStorage.getItem(TOKEN_KEY);
+      return !token; // Only expired if we also don't have a token
+    }
+    // Add 30 second buffer to prevent false positives near expiry
+    const buffer = 30 * 1000; // 30 seconds in milliseconds
+    return Date.now() >= (parseInt(expiryTime, 10) - buffer);
   },
   
   clearAll: (): void => {
@@ -118,6 +125,9 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Track if we're currently redirecting to prevent multiple redirects
+let isRedirecting = false;
+
 // Response interceptor - Handle token refresh
 apiClient.interceptors.response.use(
   (response) => response,
@@ -146,16 +156,43 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       const refreshToken = tokenStorage.getRefreshToken();
+      const currentToken = tokenStorage.getToken();
 
+      // If no refresh token, only logout if we also have no current token
+      // This prevents logout during initial page load when tokens might not be loaded yet
       if (!refreshToken) {
-        processQueue(error, null);
-        isRefreshing = false;
-        tokenStorage.clearAll();
-        // Redirect to login if we're on client side
-        if (typeof window !== 'undefined') {
-          window.location.href = '/signin';
+        // Give a small delay to allow auth context to initialize
+        if (typeof window !== 'undefined' && currentToken) {
+          // Wait a bit for auth context to potentially refresh
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Check again after delay
+          const newRefreshToken = tokenStorage.getRefreshToken();
+          if (!newRefreshToken && !currentToken) {
+            processQueue(error, null);
+            isRefreshing = false;
+            if (!isRedirecting) {
+              isRedirecting = true;
+              tokenStorage.clearAll();
+              window.location.href = '/signin';
+            }
+            return Promise.reject(error);
+          }
+        } else if (!currentToken) {
+          // No token at all, safe to logout
+          processQueue(error, null);
+          isRefreshing = false;
+          if (typeof window !== 'undefined' && !isRedirecting) {
+            isRedirecting = true;
+            tokenStorage.clearAll();
+            window.location.href = '/signin';
+          }
+          return Promise.reject(error);
+        } else {
+          // Have token but no refresh token - try to continue with existing token
+          processQueue(null, currentToken);
+          isRefreshing = false;
+          return apiClient(originalRequest);
         }
-        return Promise.reject(error);
       }
 
       try {
@@ -198,49 +235,51 @@ apiClient.interceptors.response.use(
 
           processQueue(null, token);
           isRefreshing = false;
+          isRedirecting = false; // Reset redirect flag on successful refresh
 
           return apiClient(originalRequest);
         }
 
         // For non-500 errors, only logout if token is actually expired
         // Otherwise, try to continue with existing token
-        if (tokenStorage.isTokenExpired()) {
+        const tokenExpired = tokenStorage.isTokenExpired();
+        if (tokenExpired && !currentToken) {
+          // Token is expired and we have no token to fall back to
           processQueue(error, null);
           isRefreshing = false;
-          tokenStorage.clearAll();
-          
-          // Redirect to login if we're on client side
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && !isRedirecting) {
+            isRedirecting = true;
+            tokenStorage.clearAll();
             window.location.href = '/signin';
           }
-          
           return Promise.reject(error);
         } else {
           // Token might still be valid, continue with existing token
-          processQueue(null, tokenStorage.getToken());
+          processQueue(null, currentToken || tokenStorage.getToken());
           isRefreshing = false;
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        // Only logout if token is actually expired
-        if (tokenStorage.isTokenExpired()) {
+        // Only logout if token is actually expired and we have no fallback
+        const tokenExpired = tokenStorage.isTokenExpired();
+        const fallbackToken = tokenStorage.getToken();
+        
+        if (tokenExpired && !fallbackToken) {
           processQueue(refreshError as AxiosError, null);
           isRefreshing = false;
-          tokenStorage.clearAll();
-          
-          // Redirect to login if we're on client side
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && !isRedirecting) {
+            isRedirecting = true;
+            tokenStorage.clearAll();
             window.location.href = '/signin';
           }
+          return Promise.reject(refreshError);
         } else {
           // Token might still be valid, continue with existing token
-          processQueue(null, tokenStorage.getToken());
+          processQueue(null, fallbackToken);
           isRefreshing = false;
           // Return original request with existing token
           return apiClient(originalRequest);
         }
-        
-        return Promise.reject(refreshError);
       }
     }
 
@@ -282,6 +321,10 @@ export const leadsApi = {
   },
   moveToOpportunity: async (id: string) => {
     const response = await apiClient.post(`/api/Leads/${id}/move-to-opportunity`);
+    return response.data;
+  },
+  moveToQualification: async (id: string) => {
+    const response = await apiClient.post(`/api/Leads/${id}/move-to-qualification`);
     return response.data;
   },
   createLead: async (leadData: CreateLeadRequest) => {
@@ -656,6 +699,66 @@ export const proposalsApi = {
   },
   deleteProposal: async (id: string) => {
     const response = await apiClient.delete(`/api/Proposals/${id}`);
+    return response.data;
+  },
+};
+
+// Qualifications API
+export interface CreateQualificationRequest {
+  firstName: string;
+  role: string | null;
+  companyName: string;
+  email: string;
+  phoneNumber: string | null;
+  website: string | null;
+  preferredContactMethod: string | null;
+  country: string | null;
+  city: string | null;
+  source: string | null;
+  status: string | null;
+  noOfEmployees: string | null;
+  estimatedPotential: number | null;
+  productInterest: string[];
+}
+
+export const qualificationsApi = {
+  getQualifications: async (pageIndex: number = 1, pageSize: number = 20) => {
+    const response = await apiClient.get('/api/Qualifications', {
+      params: {
+        pageIndex,
+        pageSize,
+      },
+    });
+    return response.data;
+  },
+  getQualificationById: async (id: string) => {
+    const response = await apiClient.get(`/api/Qualifications/${id}`);
+    return response.data;
+  },
+  createQualification: async (qualificationData: CreateQualificationRequest) => {
+    const response = await apiClient.post('/api/Qualifications', qualificationData);
+    return response.data;
+  },
+  updateQualification: async (id: string, qualificationData: CreateQualificationRequest) => {
+    const response = await apiClient.put(`/api/Qualifications/${id}`, qualificationData);
+    return response.data;
+  },
+  deleteQualification: async (id: string) => {
+    const response = await apiClient.delete(`/api/Qualifications/${id}`);
+    return response.data;
+  },
+};
+
+// Export API
+export const exportApi = {
+  exportData: async (entityType: number, startDate: string | null, endDate: string | null) => {
+    const response = await apiClient.get('/api/Export', {
+      params: {
+        entityType,
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      },
+    });
     return response.data;
   },
 };

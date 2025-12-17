@@ -46,9 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAuth = useCallback(async () => {
     try {
       const refreshToken = tokenStorage.getRefreshToken();
+      const currentToken = tokenStorage.getToken();
+      
       if (!refreshToken) {
-        // No refresh token - only logout if token is actually expired
-        if (tokenStorage.isTokenExpired()) {
+        // No refresh token - check if we have a valid token
+        if (currentToken && !tokenStorage.isTokenExpired()) {
+          // Have valid token, stay authenticated
+          setIsAuthenticated(true);
+          return;
+        } else if (tokenStorage.isTokenExpired() && !currentToken) {
+          // Token expired and no token - logout
           handleLogout();
         }
         return;
@@ -64,27 +71,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         setIsAuthenticated(true);
       } else if (response === null) {
-        // Silent failure (500 error) - don't logout, user can continue
-        // Only logout if token is actually expired
-        if (tokenStorage.isTokenExpired()) {
-          // Token is expired and refresh failed - need to logout
+        // Silent failure (500 error) - check if we have a valid token to fall back to
+        const token = tokenStorage.getToken();
+        const tokenExpired = tokenStorage.isTokenExpired();
+        
+        if (token && !tokenExpired) {
+          // Have valid token, continue with it
+          setIsAuthenticated(true);
+        } else if (tokenExpired && !token) {
+          // Token expired and no token - need to logout
           handleLogout();
+        } else {
+          // Token might still be valid, continue with existing token
+          setIsAuthenticated(!!token);
         }
-        // Otherwise, continue with existing token (might still be valid)
       } else {
-        // Other failure - only logout if token is expired
-        if (tokenStorage.isTokenExpired()) {
+        // Other failure - check if we have a valid token to fall back to
+        const token = tokenStorage.getToken();
+        const tokenExpired = tokenStorage.isTokenExpired();
+        
+        if (token && !tokenExpired) {
+          // Have valid token, continue with it
+          setIsAuthenticated(true);
+        } else if (tokenExpired && !token) {
+          // Token expired and no token - logout
           handleLogout();
+        } else {
+          // Try to continue with existing token
+          setIsAuthenticated(!!token);
         }
       }
     } catch (error) {
-      // Only logout if token is actually expired
-      // Silent failures (500 errors) shouldn't cause logout
-      if (tokenStorage.isTokenExpired()) {
+      // Check if we have a valid token to fall back to
+      const token = tokenStorage.getToken();
+      const tokenExpired = tokenStorage.isTokenExpired();
+      
+      if (token && !tokenExpired) {
+        // Have valid token, continue with it
+        setIsAuthenticated(true);
+        console.warn('Token refresh failed but existing token is still valid:', error);
+      } else if (tokenExpired && !token) {
+        // Token expired and no token - logout
         console.warn('Token refresh failed and token is expired:', error);
         handleLogout();
       } else {
         // Token might still be valid, continue silently
+        setIsAuthenticated(!!token);
         console.warn('Token refresh failed but token may still be valid:', error);
       }
     }
@@ -93,27 +125,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializeAuth = useCallback(async () => {
     try {
       const currentUser = authService.getCurrentUser();
-      const authenticated = authService.isAuthenticated();
-
-      if (authenticated && currentUser) {
-        setUser(currentUser);
-        setIsAuthenticated(true);
+      const token = tokenStorage.getToken();
+      const refreshToken = tokenStorage.getRefreshToken();
+      
+      // If we have tokens, even if expired, try to restore session
+      if (token || refreshToken) {
+        // Set user if available
+        if (currentUser) {
+          setUser(currentUser);
+        }
         
-        // If token is expired but refresh token exists, try to refresh
-        if (tokenStorage.isTokenExpired()) {
-          const refreshToken = tokenStorage.getRefreshToken();
+        // Check if token is expired
+        const tokenExpired = tokenStorage.isTokenExpired();
+        
+        if (tokenExpired && refreshToken) {
+          // Token is expired but we have refresh token - try to refresh
+          // Set authenticated to true optimistically while refreshing
+          setIsAuthenticated(true);
+          await refreshAuth();
+        } else if (token && !tokenExpired) {
+          // Token is valid
+          setUser(currentUser);
+          setIsAuthenticated(true);
+        } else if (token && tokenExpired && !refreshToken) {
+          // Token expired and no refresh token - not authenticated
+          setUser(null);
+          setIsAuthenticated(false);
+        } else {
+          // Have refresh token but no token - try to refresh
           if (refreshToken) {
+            setIsAuthenticated(true);
             await refreshAuth();
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
           }
         }
       } else {
+        // No tokens at all
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      setUser(null);
-      setIsAuthenticated(false);
+      // On error, check if we still have tokens before logging out
+      const token = tokenStorage.getToken();
+      const refreshToken = tokenStorage.getRefreshToken();
+      if (token || refreshToken) {
+        // Still have tokens, might be a temporary error
+        const currentUser = authService.getCurrentUser();
+        setUser(currentUser);
+        setIsAuthenticated(!!token && !tokenStorage.isTokenExpired());
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
     } finally {
       setIsLoading(false);
     }

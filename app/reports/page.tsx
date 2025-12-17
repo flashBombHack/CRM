@@ -26,6 +26,7 @@ import {
   HiRefresh,
   HiSupport,
 } from "react-icons/hi";
+import ExportDialog from "@/components/ExportDialog";
 import {
   analyticsApi,
   SeasonRevenueSummary,
@@ -47,9 +48,8 @@ function formatCurrency(value: number | null | undefined) {
 
 export default function ReportsPage() {
   const [showOverviewDropdown, setShowOverviewDropdown] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const overviewRef = useRef<HTMLDivElement>(null);
-  const exportRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const [year] = useState<number>(new Date().getFullYear());
@@ -77,9 +77,6 @@ export default function ReportsPage() {
         !overviewRef.current.contains(event.target as Node)
       ) {
         setShowOverviewDropdown(false);
-      }
-      if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
-        setShowExportDropdown(false);
       }
     };
 
@@ -160,6 +157,10 @@ export default function ReportsPage() {
 
   return (
     <ProtectedRoute>
+      <ExportDialog 
+        isOpen={showExportDialog} 
+        onClose={() => setShowExportDialog(false)} 
+      />
       <div className="flex h-screen overflow-hidden bg-[#F2F8FC]">
         <Sidebar />
 
@@ -216,39 +217,13 @@ export default function ReportsPage() {
 
                     {/* Export and AI Ideas Buttons */}
                     <div className="flex items-center gap-2">
-                      <div className="relative" ref={exportRef}>
-                        <button
-                          onClick={() =>
-                            setShowExportDropdown(!showExportDropdown)
-                          }
-                          className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 flex items-center gap-2"
-                        >
-                          Export
-                          <HiChevronDown className="w-4 h-4" />
-                        </button>
-                        {showExportDropdown && (
-                          <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
-                            <button
-                              onClick={() => setShowExportDropdown(false)}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              Export as PDF
-                            </button>
-                            <button
-                              onClick={() => setShowExportDropdown(false)}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              Export as CSV
-                            </button>
-                            <button
-                              onClick={() => setShowExportDropdown(false)}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              Export as Excel
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => setShowExportDialog(true)}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 flex items-center gap-2"
+                      >
+                        Export
+                        <HiChevronDown className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => router.push("/ai-ideas")}

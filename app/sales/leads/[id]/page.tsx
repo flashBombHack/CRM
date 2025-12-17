@@ -53,6 +53,7 @@ export default function LeadDetailPage() {
   const [isLeadQualificationExpanded, setIsLeadQualificationExpanded] = useState(true);
   const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [convertType, setConvertType] = useState<'opportunity' | 'qualified' | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toasts, success, error, removeToast } = useToast();
 
@@ -259,10 +260,13 @@ export default function LeadDetailPage() {
                             {/* Action Buttons - Joined together */}
                             <div className="flex items-center border border-black rounded-lg overflow-hidden w-full sm:w-auto">
                               <button 
-                                onClick={() => setIsConvertConfirmOpen(true)}
+                                onClick={() => {
+                                  setConvertType(null);
+                                  setIsConvertConfirmOpen(true);
+                                }}
                                 className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-900 bg-transparent border-r border-black hover:bg-primary hover:text-white transition-colors flex-1 sm:flex-none whitespace-nowrap"
                               >
-                                Convert to opportunity
+                                Convert
                               </button>
                               <button 
                                 onClick={() => setIsEditModalOpen(true)}
@@ -711,72 +715,154 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Simple confirmation modal for converting to opportunity */}
+      {/* Convert modal for opportunity or qualified */}
       {lead && isConvertConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Convert to opportunity</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Convert Lead</h2>
               <button
-                onClick={() => !isConverting && setIsConvertConfirmOpen(false)}
+                onClick={() => {
+                  if (!isConverting) {
+                    setIsConvertConfirmOpen(false);
+                    setConvertType(null);
+                  }
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
                 disabled={isConverting}
               >
                 ✕
               </button>
             </div>
-            <div className="px-6 py-5 space-y-3">
+            <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-gray-800">
-                Are you sure you want to convert this lead to an opportunity?
+                How would you like to convert this lead?
               </p>
-              <p className="text-xs text-gray-500">
-                This will move the lead into the Opportunities pipeline. You can configure the full
-                conversion details later.
-              </p>
+              
+              {/* Convert Type Selection */}
+              {!convertType && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setConvertType('opportunity')}
+                    className="w-full px-4 py-3 text-left border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">Convert to Opportunity</div>
+                    <div className="text-xs text-gray-500 mt-1">Move the lead into the Opportunities pipeline</div>
+                  </button>
+                  <button
+                    onClick={() => setConvertType('qualified')}
+                    className="w-full px-4 py-3 text-left border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">Mark as Qualified</div>
+                    <div className="text-xs text-gray-500 mt-1">Move the lead to Qualification stage</div>
+                  </button>
+                </div>
+              )}
+
+              {/* Confirmation for Opportunity */}
+              {convertType === 'opportunity' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-800">
+                    Are you sure you want to convert this lead to an opportunity?
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    This will move the lead into the Opportunities pipeline. You can configure the full
+                    conversion details later.
+                  </p>
+                </div>
+              )}
+
+              {/* Confirmation for Qualified */}
+              {convertType === 'qualified' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-800">
+                    Are you sure you want to mark this lead as qualified?
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    This will move the lead to the Qualification stage.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+              {convertType && (
+                <button
+                  type="button"
+                  onClick={() => setConvertType(null)}
+                  disabled={isConverting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Back
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => !isConverting && setIsConvertConfirmOpen(false)}
-                disabled={isConverting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!lead || isConverting) return;
-                  try {
-                    setIsConverting(true);
-                    const response = await leadsApi.moveToOpportunity(lead.id);
-                    if (response?.isSuccess) {
-                      success("Lead converted to opportunity");
-                      setIsConvertConfirmOpen(false);
-                      router.push("/sales/opportunity");
-                    } else {
-                      const errorMessage =
-                        response?.message ||
-                        response?.errors?.[0] ||
-                        "Failed to convert lead to opportunity";
-                      error(errorMessage);
-                    }
-                  } catch (err: any) {
-                    const errorMessage =
-                      err?.response?.data?.message ||
-                      err?.response?.data?.errors?.[0] ||
-                      err?.message ||
-                      "Failed to convert lead to opportunity. Please try again.";
-                    error(errorMessage);
-                  } finally {
-                    setIsConverting(false);
+                onClick={() => {
+                  if (!isConverting) {
+                    setIsConvertConfirmOpen(false);
+                    setConvertType(null);
                   }
                 }}
                 disabled={isConverting}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${convertType ? '' : 'flex-1'}`}
               >
-                {isConverting ? "Converting..." : "Confirm"}
+                Cancel
               </button>
+              {convertType && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!lead || isConverting) return;
+                    try {
+                      setIsConverting(true);
+                      
+                      if (convertType === 'opportunity') {
+                        const response = await leadsApi.moveToOpportunity(lead.id);
+                        if (response?.isSuccess) {
+                          success("Lead converted to opportunity");
+                          setIsConvertConfirmOpen(false);
+                          setConvertType(null);
+                          router.push("/sales/opportunity");
+                        } else {
+                          const errorMessage =
+                            response?.message ||
+                            response?.errors?.[0] ||
+                            "Failed to convert lead to opportunity";
+                          error(errorMessage);
+                        }
+                      } else if (convertType === 'qualified') {
+                        // Move to qualification
+                        const moveResponse = await leadsApi.moveToQualification(lead.id);
+                        if (moveResponse?.isSuccess) {
+                          success("Lead marked as qualified");
+                          setIsConvertConfirmOpen(false);
+                          setConvertType(null);
+                          router.push("/sales/qualification");
+                        } else {
+                          const errorMessage =
+                            moveResponse?.message ||
+                            moveResponse?.errors?.[0] ||
+                            "Failed to move lead to qualification";
+                          error(errorMessage);
+                        }
+                      }
+                    } catch (err: any) {
+                      const errorMessage =
+                        err?.response?.data?.message ||
+                        err?.response?.data?.errors?.[0] ||
+                        err?.message ||
+                        `Failed to convert lead. Please try again.`;
+                      error(errorMessage);
+                    } finally {
+                      setIsConverting(false);
+                    }
+                  }}
+                  disabled={isConverting}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isConverting ? "Converting..." : "Confirm"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -811,5 +897,6 @@ export default function LeadDetailPage() {
     </ProtectedRoute>
   );
 }
+
 
 

@@ -3,20 +3,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { HiDotsVertical, HiEye, HiPencil, HiTrash } from 'react-icons/hi';
+import { useRouter } from 'next/navigation';
 
-interface ProposalActionsDropdownProps {
-  proposalId: string;
-  onView: () => void;
+interface QualificationActionsDropdownProps {
+  qualificationId: string;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export default function ProposalActionsDropdown({ proposalId, onView, onEdit, onDelete }: ProposalActionsDropdownProps) {
+export default function QualificationActionsDropdown({ qualificationId, onEdit, onDelete }: QualificationActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Calculate position and close dropdown when clicking outside
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function ProposalActionsDropdown({ proposalId, onView, onEdit, on
 
   const handleView = () => {
     setIsOpen(false);
-    onView();
+    router.push(`/sales/qualification/${qualificationId}`);
   };
 
   const handleEdit = () => {
@@ -144,5 +145,4 @@ export default function ProposalActionsDropdown({ proposalId, onView, onEdit, on
     </div>
   );
 }
-
 

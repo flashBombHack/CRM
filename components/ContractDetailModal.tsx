@@ -250,3 +250,4 @@ export default function ContractDetailModal({ isOpen, onClose, contract }: Contr
   );
 }
 
+

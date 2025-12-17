@@ -57,7 +57,7 @@ export default function Sidebar() {
         { name: "Stage 6 – Contracts", href: "/sales/contracts" },
         { name: "Stage 7 – Activation", href: "/sales/activation" },
         { name: "Stage 8 – Invoice", href: "/sales/invoice" },
-        { name: "Stage 9 – Customer", href: "/sales/customer" },
+        { name: "Stage 9 – Customer Level", href: "/sales/customer" },
         { name: "Stage 10 – Renewal", href: "/sales/renewal" },
       ]
     },
